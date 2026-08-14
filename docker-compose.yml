@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: catalog-postgres
+    environment:
+      POSTGRES_DB: catalog_db
+      POSTGRES_USER: catalog_user
+      POSTGRES_PASSWORD: catalog_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - catalog_pgdata:/var/lib/postgresql/data
+
+volumes:
+  catalog_pgdata:
