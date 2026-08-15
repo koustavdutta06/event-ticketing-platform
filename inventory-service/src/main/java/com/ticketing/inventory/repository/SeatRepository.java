@@ -1,6 +1,6 @@
-package com.ticketing.catalog.repository;
+package com.ticketing.inventory.repository;
 
-import com.ticketing.catalog.entities.Seat;
+import com.ticketing.inventory.entities.Seat;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

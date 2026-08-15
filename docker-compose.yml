@@ -1,5 +1,5 @@
 services:
-  postgres:
+  catalog-postgres:
     image: postgres:16
     container_name: catalog-postgres
     environment:
@@ -11,5 +11,18 @@ services:
     volumes:
       - catalog_pgdata:/var/lib/postgresql/data
 
+  inventory-postgres:
+    image: postgres:16
+    container_name: inventory-postgres
+    environment:
+      POSTGRES_DB: inventory_db
+      POSTGRES_USER: inventory_user
+      POSTGRES_PASSWORD: inventory_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - inventory_pgdata:/var/lib/postgresql/data
+
 volumes:
   catalog_pgdata:
+  inventory_pgdata:

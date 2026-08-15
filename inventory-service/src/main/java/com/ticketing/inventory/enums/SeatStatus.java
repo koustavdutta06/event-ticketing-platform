@@ -1,4 +1,4 @@
-package com.ticketing.catalog.enums;
+package com.ticketing.inventory.enums;
 
 public enum SeatStatus {
     AVAILABLE,  // free to be held/booked
