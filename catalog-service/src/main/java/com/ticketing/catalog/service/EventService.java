@@ -2,6 +2,7 @@ package com.ticketing.catalog.service;
 
 import com.ticketing.catalog.dto.EventRequest;
 import com.ticketing.catalog.dto.EventResponse;
+import com.ticketing.catalog.dto.EventStatusRequest;
 import com.ticketing.catalog.entities.Event;
 import com.ticketing.catalog.entities.Venue;
 import com.ticketing.catalog.enums.EventStatus;
@@ -38,6 +39,20 @@ public class EventService {
     public List<EventResponse> getPublishedEvents() {
         return eventRepository.findByStatus(EventStatus.PUBLISHED)
                 .stream().map(this::toResponse).toList();
+    }
+
+    public EventResponse changeEventStatus(EventStatusRequest request) {
+        Event event = eventRepository.findById(request.id())
+                .orElseThrow(() -> new EntityNotFoundException("Event not found: " + request.id()));
+        event.setStatus(request.status());
+        eventRepository.save(event);
+        return toResponse(event);
+    }
+
+    public EventResponse getEventById(Long id) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Event not found: " + id));
+        return toResponse(event);
     }
 
     private EventResponse toResponse(Event e) {

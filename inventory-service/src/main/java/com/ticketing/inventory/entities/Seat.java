@@ -1,6 +1,6 @@
-package com.ticketing.catalog.entities;
+package com.ticketing.inventory.entities;
 
-import com.ticketing.catalog.enums.SeatStatus;
+import com.ticketing.inventory.enums.SeatStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,9 +18,10 @@ public class Seat {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "event_id", nullable = false)
-    private Event event;
+    // No longer a JPA @ManyToOne relationship — Event lives in a different service/DB now.
+    // Just store the foreign ID as a plain field, and resolve the actual Event via WebClient when needed.
+    @Column(nullable = false)
+    private Long eventId;
 
     private String seatNumber;   // e.g. "A12"
     private String seatSection;  // e.g. "Balcony"

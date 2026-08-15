@@ -2,6 +2,7 @@ package com.ticketing.catalog.controller;
 
 import com.ticketing.catalog.dto.EventRequest;
 import com.ticketing.catalog.dto.EventResponse;
+import com.ticketing.catalog.dto.EventStatusRequest;
 import com.ticketing.catalog.service.EventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +24,18 @@ public class EventController {
         return ResponseEntity.status(HttpStatus.CREATED).body(eventService.createEvent(request));
     }
 
+    @PatchMapping
+    public ResponseEntity<EventResponse> changeEventStatus(@Valid @RequestBody EventStatusRequest request) {
+        return ResponseEntity.status(HttpStatus.OK).body(eventService.changeEventStatus(request));
+    }
+
     @GetMapping
     public ResponseEntity<List<EventResponse>> getPublished() {
         return ResponseEntity.ok(eventService.getPublishedEvents());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EventResponse> getById(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(eventService.getEventById(id));
     }
 }

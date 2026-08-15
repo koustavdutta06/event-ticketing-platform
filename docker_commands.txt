@@ -1,0 +1,8 @@
+event-ticket-system:
+
+start - docker compose up -d
+test db conn - docker ps
+see db logs - docker compose logs postgres
+psql command - docker exec -it catalog-postgres psql -U root -d catalog_db
+stop and remove volume :- docker compose down -v
+stop and don't remove volume:- docker compose down
