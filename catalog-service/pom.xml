@@ -9,7 +9,6 @@
 	</parent>
 	<groupId>com.ticketing</groupId>
 	<artifactId>catalog-service</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
 	<url/>

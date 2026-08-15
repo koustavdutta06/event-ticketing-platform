@@ -1,10 +1,10 @@
-package com.ticketing.inventory;
+package com.ticketing.notification;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 //@SpringBootTest
-class InventoryServiceApplicationTests {
+class NotificationServiceApplicationTests {
 
 //	@Test
 	void contextLoads() {

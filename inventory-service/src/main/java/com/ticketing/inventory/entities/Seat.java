@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "seats")
@@ -29,6 +30,8 @@ public class Seat {
 
     @Enumerated(EnumType.STRING)
     private SeatStatus status; // AVAILABLE, HELD, BOOKED
+
+    private LocalDateTime heldUntil;
 
     @Version
     private Long version; // optimistic locking — you'll rely on this heavily in inventory-service later
