@@ -3,8 +3,12 @@ package com.ticketing.inventory.publisher;
 import com.ticketing.events.SeatHeldEvent;
 import com.ticketing.events.SeatHoldExpiredEvent;
 import lombok.RequiredArgsConstructor;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
 
 @Component
 @RequiredArgsConstructor
@@ -24,4 +28,18 @@ public class SeatEventPublisher {
     public void publishSeatHoldExpired(SeatHoldExpiredEvent event) {
         kafkaTemplate.send(TOPIC, event.seatId().toString(), event);
     }
+
+//    public void publishSeatHeld(SeatHeldEvent event) {
+//        send(event.seatId().toString(), event, "seatHeld");
+//    }
+//
+//    public void publishSeatHoldExpired(SeatHoldExpiredEvent event) {
+//        send(event.seatId().toString(), event, "seatHoldExpired");
+//    }
+
+//    private void send(String key, Object payload, String typeId) {
+//        ProducerRecord<String, Object> record = new ProducerRecord<>(TOPIC, key, payload);
+//        record.headers().add(new RecordHeader("__TypeId__", typeId.getBytes(StandardCharsets.UTF_8)));
+//        kafkaTemplate.send(record);
+//    }
 }
