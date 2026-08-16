@@ -13,10 +13,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "com.ticketing.events"
-        spring.json.type.mapping: seatHeld:com.ticketing.events.SeatHeldEvent,seatHoldExpired:com.ticketing.events.SeatHoldExpiredEvent
-#        spring.json.type.mapping: >
-#          seatHeld:com.ticketing.events.SeatHeldEvent,
-#          seatHoldExpired:com.ticketing.events.SeatHoldExpiredEvent
+#        spring.json.type.mapping: seatHeld:com.ticketing.events.SeatHeldEvent,seatHoldExpired:com.ticketing.events.SeatHoldExpiredEvent
 
 logging:
   level:

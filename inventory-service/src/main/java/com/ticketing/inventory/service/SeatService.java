@@ -6,6 +6,7 @@ import com.ticketing.inventory.dto.SeatRequest;
 import com.ticketing.inventory.dto.SeatResponse;
 import com.ticketing.inventory.entities.Seat;
 import com.ticketing.inventory.enums.SeatStatus;
+import com.ticketing.inventory.publisher.SeatEventPublisher;
 import com.ticketing.inventory.repository.SeatRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;

@@ -3,6 +3,7 @@ package com.ticketing.inventory.service;
 import com.ticketing.events.SeatHoldExpiredEvent;
 import com.ticketing.inventory.entities.Seat;
 import com.ticketing.inventory.enums.SeatStatus;
+import com.ticketing.inventory.publisher.SeatEventPublisher;
 import com.ticketing.inventory.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,7 @@ public class SeatExpiryScheduler {
     private static final String TOPIC = "seat-events";
 
     private final SeatRepository seatRepository;
-    private final SeatEventPublisher  seatEventPublisher ;
+    private final SeatEventPublisher seatEventPublisher ;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     // Note: this requires a heldAt/expiresAt column on Seat itself, or a small
