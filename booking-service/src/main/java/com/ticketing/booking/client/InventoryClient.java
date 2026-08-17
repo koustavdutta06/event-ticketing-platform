@@ -1,8 +1,7 @@
-package com.ticketing.booking.service;
+package com.ticketing.booking.client;
 
 import com.ticketing.booking.dto.SeatHoldResult;
 import com.ticketing.booking.exception.SeatAlreadyHeldException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -17,12 +16,19 @@ public class InventoryClient {
         this.inventoryWebClient = inventoryWebClient;
     }
 
-    public Mono<SeatHoldResult> holdSeat(Long seatId) {
+    public Mono<SeatHoldResult> holdSeat(Long seatId, Long bookingId) {
         return inventoryWebClient.post()
-                .uri("/api/v1/seats/{seatId}/hold", seatId)
+        .uri("/api/v1/seats/{seatId}/hold?bookingId={bookingId}", seatId, bookingId)
                 .retrieve()
                 .onStatus(status -> status.value() == 409,
                         response -> Mono.error(new SeatAlreadyHeldException("Seat " + seatId + " is no longer available")))
                 .bodyToMono(SeatHoldResult.class);
+    }
+
+    public Mono<Void> updateSeatStatus(Long seatId, boolean successStatus) {
+        return inventoryWebClient.post()
+                .uri("/api/v1/seats/{seatId}/status?success={successStatus}", seatId, successStatus)
+                .retrieve()
+                .bodyToMono(Void.class);
     }
 }

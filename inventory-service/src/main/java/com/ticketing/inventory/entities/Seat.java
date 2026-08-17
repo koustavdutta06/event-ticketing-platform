@@ -27,6 +27,7 @@ public class Seat {
     private String seatNumber;   // e.g. "A12"
     private String seatSection;  // e.g. "Balcony"
     private BigDecimal price;
+    private Long bookingId;
 
     @Enumerated(EnumType.STRING)
     private SeatStatus status; // AVAILABLE, HELD, BOOKED

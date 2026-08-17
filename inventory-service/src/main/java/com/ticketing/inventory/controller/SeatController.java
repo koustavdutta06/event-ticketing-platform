@@ -6,12 +6,14 @@ import com.ticketing.inventory.dto.SeatResponse;
 import com.ticketing.inventory.service.SeatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/seats")
 @RequiredArgsConstructor
@@ -30,8 +32,15 @@ public class SeatController {
     }
 
     @PostMapping("/{seatId}/hold")
-    public ResponseEntity<SeatHoldResponse> hold(@PathVariable("seatId") Long seatId) {
-        Long bookingId = 5L;
+    public ResponseEntity<SeatHoldResponse> holdSeat(@PathVariable("seatId") Long seatId,
+                                                     @RequestParam("bookingId") Long bookingId) {
         return ResponseEntity.ok(seatService.holdSeat(seatId, bookingId));
+    }
+
+    @PostMapping("/{seatId}/status")
+    public ResponseEntity<Void> release(@PathVariable("seatId") Long seatId, @RequestParam("success") boolean success) {
+        log.info("Received request for seatId {} and successStatus is {}", seatId, success);
+        seatService.changeSeatStatus(seatId, success);
+        return ResponseEntity.noContent().build();
     }
 }

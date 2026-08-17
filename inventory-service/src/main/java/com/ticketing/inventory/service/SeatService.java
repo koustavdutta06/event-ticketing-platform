@@ -70,16 +70,25 @@ public class SeatService {
         }
 
         seat.setStatus(SeatStatus.HELD);
-        seat.setHeldUntil(LocalDateTime.now().plusMinutes(1));
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(5);
+        seat.setHeldUntil(expiryTime);
         seatRepository.save(seat);
 
         LocalDateTime now = LocalDateTime.now();
         log.info("Sending message from holdSeat for held seatId {}",seat.getId());
         seatEventPublisher.publishSeatHeld(
-                new SeatHeldEvent(seatId, seat.getEventId(), bookingId, now, now.plusMinutes(1))
+                new SeatHeldEvent(seatId, seat.getEventId(), bookingId, now, expiryTime)
         );
 
         return new SeatHoldResponse(seatId, SeatStatus.HELD, true);
+    }
+
+    @Transactional
+    public void changeSeatStatus(Long seatId, boolean status) {
+        Seat seat = seatRepository.findById(seatId).orElseThrow();
+        seat.setStatus(status ? SeatStatus.BOOKED : SeatStatus.AVAILABLE);
+        seat.setHeldUntil(null);
+        seatRepository.save(seat);
     }
 
     private SeatResponse toResponse(Seat s) {

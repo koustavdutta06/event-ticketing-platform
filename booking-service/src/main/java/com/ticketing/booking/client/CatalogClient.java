@@ -1,8 +1,7 @@
-package com.ticketing.booking.service;
+package com.ticketing.booking.client;
 
 import com.ticketing.booking.dto.EventDetails;
 import com.ticketing.booking.exception.EventNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
