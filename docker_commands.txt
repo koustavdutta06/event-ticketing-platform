@@ -6,3 +6,17 @@ see db logs - docker compose logs postgres
 psql command - docker exec -it catalog-postgres psql -U root -d catalog_db
 stop and remove volume :- docker compose down -v
 stop and don't remove volume:- docker compose down
+
+docker compose down       # stops and removes containers, KEEPS the volume
+docker compose up -d      # restarts, reattaches to the same volume, data intact
+
+docker compose stop       # just stops, doesn't remove anything
+docker compose start      # resumes the same containers
+
+
+
+Delete kafka topic:- docker exec -it ticketing-kafka /opt/kafka/bin/kafka-topics.sh --delete --topic seat-events --bootstrap-server localhost:9092
+
+Console consumer:- docker exec -it ticketing-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic seat-events --from-beginning
+
+consumer group status:- docker exec -it ticketing-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group notification-service

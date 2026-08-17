@@ -1,23 +1,29 @@
 package com.ticketing.inventory.service;
 
+import com.ticketing.events.SeatHeldEvent;
 import com.ticketing.inventory.dto.SeatHoldResponse;
 import com.ticketing.inventory.dto.SeatRequest;
 import com.ticketing.inventory.dto.SeatResponse;
 import com.ticketing.inventory.entities.Seat;
 import com.ticketing.inventory.enums.SeatStatus;
+import com.ticketing.inventory.publisher.SeatEventPublisher;
 import com.ticketing.inventory.repository.SeatRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SeatService {
 
     private final SeatRepository seatRepository;
+    private final SeatEventPublisher seatEventPublisher;
 
     public SeatResponse createSeat(SeatRequest request) {
         Seat seat = Seat.builder()
@@ -36,9 +42,26 @@ public class SeatService {
         return seatRepository.findByEventId(eventId).stream().map(this::toResponse).toList();
     }
 
-    // inventory-service: service/SeatService.java — add this method
+//    @Transactional
+//    public SeatHoldResponse holdSeat(Long seatId) {
+//        Seat seat = seatRepository.findById(seatId)
+//                .orElseThrow(() -> new EntityNotFoundException("Seat not found: " + seatId));
+//
+//        if (seat.getStatus() != SeatStatus.AVAILABLE) {
+//            return new SeatHoldResponse(seatId, seat.getStatus(), false);
+//        }
+//
+//        seat.setStatus(SeatStatus.HELD);
+//        // save() here triggers the @Version check — if another transaction modified
+//        // this row since we read it, Hibernate throws OptimisticLockException instead
+//        // of silently overwriting a concurrent hold.
+//        seatRepository.save(seat);
+//
+//        return new SeatHoldResponse(seatId, SeatStatus.HELD, true);
+//    }
+
     @Transactional
-    public SeatHoldResponse holdSeat(Long seatId) {
+    public SeatHoldResponse holdSeat(Long seatId, Long bookingId) {
         Seat seat = seatRepository.findById(seatId)
                 .orElseThrow(() -> new EntityNotFoundException("Seat not found: " + seatId));
 
@@ -47,12 +70,25 @@ public class SeatService {
         }
 
         seat.setStatus(SeatStatus.HELD);
-        // save() here triggers the @Version check — if another transaction modified
-        // this row since we read it, Hibernate throws OptimisticLockException instead
-        // of silently overwriting a concurrent hold.
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(5);
+        seat.setHeldUntil(expiryTime);
         seatRepository.save(seat);
 
+        LocalDateTime now = LocalDateTime.now();
+        log.info("Sending message from holdSeat for held seatId {}",seat.getId());
+        seatEventPublisher.publishSeatHeld(
+                new SeatHeldEvent(seatId, seat.getEventId(), bookingId, now, expiryTime)
+        );
+
         return new SeatHoldResponse(seatId, SeatStatus.HELD, true);
+    }
+
+    @Transactional
+    public void changeSeatStatus(Long seatId, boolean status) {
+        Seat seat = seatRepository.findById(seatId).orElseThrow();
+        seat.setStatus(status ? SeatStatus.BOOKED : SeatStatus.AVAILABLE);
+        seat.setHeldUntil(null);
+        seatRepository.save(seat);
     }
 
     private SeatResponse toResponse(Seat s) {

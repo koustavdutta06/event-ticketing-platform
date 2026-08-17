@@ -20,6 +20,9 @@
         <module>catalog-service</module>
         <module>inventory-service</module>
         <module>booking-service</module>
+        <module>notification-service</module>
+        <module>auth-service</module>
+        <module>common-events</module>
     </modules>
 
     <dependencyManagement>
@@ -49,7 +52,7 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
-                        <argLine>-Duser.timezone=UTC</argLine>
+                        <argLine>-Duser.timezone=Asia/Kolkata</argLine>
                     </configuration>
                 </plugin>
             </plugins>
