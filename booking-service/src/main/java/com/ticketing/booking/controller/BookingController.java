@@ -3,7 +3,6 @@ package com.ticketing.booking.controller;
 import com.ticketing.booking.client.PaymentClient;
 import com.ticketing.booking.dto.BookingResponse;
 import com.ticketing.booking.dto.PaymentOrderResponse;
-import com.ticketing.booking.publisher.PaymentSimulator;
 import com.ticketing.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
