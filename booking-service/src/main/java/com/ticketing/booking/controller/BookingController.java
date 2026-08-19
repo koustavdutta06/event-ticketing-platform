@@ -1,6 +1,8 @@
 package com.ticketing.booking.controller;
 
+import com.ticketing.booking.client.PaymentClient;
 import com.ticketing.booking.dto.BookingResponse;
+import com.ticketing.booking.dto.PaymentOrderResponse;
 import com.ticketing.booking.publisher.PaymentSimulator;
 import com.ticketing.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
@@ -16,18 +18,19 @@ import java.math.BigDecimal;
 public class BookingController {
 
     private final BookingService bookingService;
-    private final PaymentSimulator paymentSimulator;
+    private final PaymentClient paymentClient;
 
     @PostMapping
     public Mono<ResponseEntity<BookingResponse>> book(@RequestParam("seatId") Long seatId, @RequestParam("eventId") Long eventId) {
         return bookingService.initiateBooking(seatId, eventId).map(ResponseEntity::ok);
     }
 
-    @PostMapping("/{bookingId}/pay")
-    public ResponseEntity<String> pay(@PathVariable("bookingId") Long bookingId,
-                                      @RequestParam("seatId") Long seatId,
-                                      @RequestParam("amount") BigDecimal amount) {
-//        paymentSimulator.attemptPayment(bookingId, seatId, amount);
-        return ResponseEntity.ok(paymentSimulator.attemptPayment(bookingId, seatId, amount));
+    @PostMapping("/{bookingId}/create-payment-order")
+    public Mono<ResponseEntity<PaymentOrderResponse>> createPaymentOrder(
+            @PathVariable("bookingId") Long bookingId,
+            @RequestParam("amount") BigDecimal amount,
+            @RequestParam("seatId") Long seatId) {
+        return paymentClient.createPaymentOrder(bookingId, seatId, amount)
+                .map(ResponseEntity::ok);
     }
 }

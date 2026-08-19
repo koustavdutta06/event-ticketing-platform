@@ -21,4 +21,9 @@ public class WebClientConfig {
                 .baseUrl(baseUrl)
                 .build();
     }
+
+    @Bean
+    public WebClient paymentWebClient(@Value("${payment-service.base-url}") String baseUrl) {
+        return WebClient.builder().baseUrl(baseUrl).build();
+    }
 }

@@ -45,6 +45,11 @@ public class PaymentEventListener {
         Booking booking = bookingRepository.findById(event.bookingId())
                 .orElseThrow(() -> new IllegalStateException("Booking not found: " + event.bookingId()));
 
+    if (booking.getStatus() == BookingStatus.CONFIRMED) {
+        log.info("Booking {} already CONFIRMED — duplicate event ignored", event.bookingId());
+        return;
+    }
+
     if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
         // Booking already moved on — most likely the hold expired before this payment
         // event arrived. Payment succeeded on the gateway side, but we can't honor it.

@@ -10,6 +10,8 @@ import com.ticketing.catalog.repository.EventRepository;
 import com.ticketing.catalog.repository.VenueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +23,7 @@ public class EventService {
     private final EventRepository eventRepository;
     private final VenueRepository venueRepository;
 
+    @CacheEvict(value = {"events", "published-events"}, allEntries = true)
     public EventResponse createEvent(EventRequest request) {
         Venue venue = venueRepository.findById(request.venueId())
                 .orElseThrow(() -> new EntityNotFoundException("Venue not found: " + request.venueId()));
@@ -36,11 +39,13 @@ public class EventService {
         return toResponse(saved);
     }
 
+    @Cacheable(value = "published-events", key = "'all'")
     public List<EventResponse> getPublishedEvents() {
         return eventRepository.findByStatus(EventStatus.PUBLISHED)
                 .stream().map(this::toResponse).toList();
     }
 
+    @CacheEvict(value = {"events", "published-events"}, allEntries = true)
     public EventResponse changeEventStatus(EventStatusRequest request) {
         Event event = eventRepository.findById(request.id())
                 .orElseThrow(() -> new EntityNotFoundException("Event not found: " + request.id()));
@@ -49,6 +54,7 @@ public class EventService {
         return toResponse(event);
     }
 
+    @Cacheable(value = "events", key = "#id")
     public EventResponse getEventById(Long id) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found: " + id));
