@@ -7,189 +7,458 @@
 	},
 	"item": [
 		{
-			"name": "Create Event",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"name\": \"Messi Event\",\r\n    \"venueId\": 6,\r\n    \"startTime\": \"2027-01-01T11:00:00\"\r\n}"
-				},
-				"url": {
-					"raw": "http://localhost:8081/api/v1/events",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8081",
-					"path": [
-						"api",
-						"v1",
-						"events"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Change Event status",
-			"request": {
-				"method": "PATCH",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"id\": 4,\r\n    \"status\": \"PUBLISHED\"\r\n}"
-				},
-				"url": {
-					"raw": "http://localhost:8081/api/v1/events",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8081",
-					"path": [
-						"api",
-						"v1",
-						"events"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Get published events",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": ""
-				},
-				"url": {
-					"raw": "http://localhost:8081/api/v1/events/1",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8081",
-					"path": [
-						"api",
-						"v1",
-						"events",
-						"1"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Add venue",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"name\": \"Saltlake stadium\",\r\n    \"city\": \"Kolkata\",\r\n    \"totalCapacity\": 60000\r\n}"
-				},
-				"url": {
-					"raw": "http://localhost:8081/api/v1/venues",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8081",
-					"path": [
-						"api",
-						"v1",
-						"venues"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Add seats",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"eventId\": 1,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 49.99\r\n}"
-				},
-				"url": {
-					"raw": "http://localhost:8082/api/v1/seats",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8082",
-					"path": [
-						"api",
-						"v1",
-						"seats"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Hold seat",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"url": {
-					"raw": "http://localhost:8083/api/v1/bookings?seatId=1&eventId=1",
-					"protocol": "http",
-					"host": [
-						"localhost"
-					],
-					"port": "8083",
-					"path": [
-						"api",
-						"v1",
-						"bookings"
-					],
-					"query": [
-						{
-							"key": "seatId",
-							"value": "1"
+			"name": "Inventory Service",
+			"item": [
+				{
+					"name": "Add seats",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"eventId\": 4,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 1500\r\n}"
 						},
-						{
-							"key": "eventId",
-							"value": "1"
+						"url": {
+							"raw": "http://localhost:8082/api/v1/seats",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"seats"
+							]
 						}
-					]
+					},
+					"response": []
+				},
+				{
+					"name": "Hold Seat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"eventId\": 1,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 49.99\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/v1/seats/4/hold?bookingId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"seats",
+								"4",
+								"hold"
+							],
+							"query": [
+								{
+									"key": "bookingId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Release Seat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"eventId\": 1,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 49.99\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/v1/seats/4/release",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"seats",
+								"4",
+								"release"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seats for an event",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"eventId\": 1,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 49.99\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/v1/seats?eventId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"seats"
+							],
+							"query": [
+								{
+									"key": "eventId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
 				}
-			},
-			"response": []
+			]
+		},
+		{
+			"name": "Booking Service",
+			"item": [
+				{
+					"name": "Book seat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzg3MTcyNzg5LCJleHAiOjE3ODcxNzYzODl9.EUq3FEMQHbJEx9FM9w-LWFiFn7VC1oyerXQg0-uHNjU",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8083/api/v1/bookings?eventId=4&seatId=9",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"api",
+								"v1",
+								"bookings"
+							],
+							"query": [
+								{
+									"key": "eventId",
+									"value": "4"
+								},
+								{
+									"key": "seatId",
+									"value": "9"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Make Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwicm9sZSI6IkNVU1RPTUVSIiwiaWF0IjoxNzg3MTcyNzg5LCJleHAiOjE3ODcxNzYzODl9.EUq3FEMQHbJEx9FM9w-LWFiFn7VC1oyerXQg0-uHNjU",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8083/api/v1/bookings/12/create-payment-order?seatId=9&amount=500",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"api",
+								"v1",
+								"bookings",
+								"12",
+								"create-payment-order"
+							],
+							"query": [
+								{
+									"key": "seatId",
+									"value": "9"
+								},
+								{
+									"key": "amount",
+									"value": "500"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Catelog Service",
+			"item": [
+				{
+					"name": "Create Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"Messi Event\",\r\n    \"venueId\": 6,\r\n    \"startTime\": \"2027-01-01T11:00:00\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/events",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"v1",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Event status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"id\": 4,\r\n    \"status\": \"PUBLISHED\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/events",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"v1",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get published events",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/events",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"v1",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event By Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/events/1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"v1",
+								"events",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add venue",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"Saltlake stadium\",\r\n    \"city\": \"Kolkata\",\r\n    \"totalCapacity\": 60000\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/venues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"v1",
+								"venues"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth Service",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"test@example.com\",\r\n    \"password\": \"SecurePass123\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8085/api/v1/auth/register",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8085",
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"test@example.com\",\r\n    \"password\": \"SecurePass123\"\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8085/api/v1/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8085",
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }

@@ -45,6 +45,11 @@ public class PaymentEventListener {
         Booking booking = bookingRepository.findById(event.bookingId())
                 .orElseThrow(() -> new IllegalStateException("Booking not found: " + event.bookingId()));
 
+    if (booking.getStatus() == BookingStatus.CONFIRMED) {
+        log.info("Booking {} already CONFIRMED — duplicate event ignored", event.bookingId());
+        return;
+    }
+
     if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
         // Booking already moved on — most likely the hold expired before this payment
         // event arrived. Payment succeeded on the gateway side, but we can't honor it.
@@ -75,7 +80,7 @@ public class PaymentEventListener {
         }
 
         kafkaTemplate.send(BOOKING_EVENTS_TOPIC, booking.getId().toString(),
-                new BookingConfirmedEvent(booking.getId(), booking.getSeatId(), booking.getEventId()));
+                new BookingConfirmedEvent(booking.getId(), booking.getSeatId(), booking.getCustomerEmail(), booking.getEventId()));
 
         log.info("Booking {} CONFIRMED after successful payment", booking.getId());
     }
@@ -109,7 +114,7 @@ public class PaymentEventListener {
         }
 
         kafkaTemplate.send(BOOKING_EVENTS_TOPIC, booking.getId().toString(),
-                new BookingCancelledEvent(booking.getId(), booking.getSeatId(), event.reason()));
+                new BookingCancelledEvent(booking.getId(), booking.getSeatId(), booking.getCustomerEmail(), event.reason()));
 
         log.info("Booking {} CANCELLED, seat {} released — reason: {}",
                 booking.getId(), booking.getSeatId(), event.reason());

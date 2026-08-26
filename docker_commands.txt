@@ -1,5 +1,6 @@
 event-ticket-system:
 
+Docker commands:
 start - docker compose up -d
 test db conn - docker ps
 see db logs - docker compose logs postgres
@@ -20,3 +21,12 @@ Delete kafka topic:- docker exec -it ticketing-kafka /opt/kafka/bin/kafka-topics
 Console consumer:- docker exec -it ticketing-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic seat-events --from-beginning
 
 consumer group status:- docker exec -it ticketing-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group notification-service
+
+
+
+
+
+
+In Powershell:
+Generate random secret if have openssl: openssl rand -base64 32
+if don't have openssl: [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))

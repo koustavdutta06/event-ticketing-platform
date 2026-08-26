@@ -1,0 +1,30 @@
+package com.ticketing.payment.security;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    // Not a @Component: it is wired into the chain below via addFilterBefore only.
+    // Registering it as a bean too would make Spring Boot ALSO auto-register it as a
+    // standalone global servlet filter, running signature verification twice per request.
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http, @Value("${razorpay.webhook-secret}") String webhookSecret) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/webhooks/razorpay").hasAuthority("ROLE_WEBHOOK")
+                        .anyRequest().permitAll())
+                .addFilterBefore(new RazorpayWebhookAuthFilter(webhookSecret), UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+}

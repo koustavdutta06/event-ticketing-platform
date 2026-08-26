@@ -22,6 +22,7 @@
         <module>booking-service</module>
         <module>notification-service</module>
         <module>auth-service</module>
+        <module>payment-service</module>
         <module>common-events</module>
     </modules>
 
