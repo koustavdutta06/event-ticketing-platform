@@ -11,8 +11,12 @@ spring:
     password: auth_pass
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
 
 springdoc:
   swagger-ui:
