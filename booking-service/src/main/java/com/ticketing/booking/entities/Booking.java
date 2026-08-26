@@ -20,6 +20,7 @@ public class Booking {
     private Long eventId;
 
     private BigDecimal amount;
+    private String customerEmail;
 
     @Enumerated(EnumType.STRING)
     private BookingStatus status;

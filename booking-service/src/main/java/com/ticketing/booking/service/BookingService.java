@@ -30,6 +30,7 @@ public class BookingService {
                     Booking booking = Booking.builder()
                             .seatId(seatId)
                             .eventId(eventId)
+                            .customerEmail("koustavdutta06@gmail.com")
                             .status(BookingStatus.PENDING_PAYMENT)
                             .createdAt(LocalDateTime.now())
                             .updatedAt(LocalDateTime.now())
