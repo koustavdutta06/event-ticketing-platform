@@ -25,6 +25,28 @@ razorpay:
   webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
   currency: INR
 
+# payment-service/application.yml
+resilience4j:
+  circuitbreaker:
+    instances:
+      razorpay:
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 30s
+        minimum-number-of-calls: 3
+        record-exceptions:
+          - java.io.IOException
+          - com.razorpay.RazorpayException
+
+  retry:
+    instances:
+      razorpay:
+        max-attempts: 2
+        wait-duration: 2000ms
+        retry-exceptions:
+          - java.io.IOException
+          - com.razorpay.RazorpayException
+
 logging:
   level:
     com.ticketing.payment: DEBUG

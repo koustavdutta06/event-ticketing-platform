@@ -2,12 +2,19 @@ package com.ticketing.booking.client;
 
 import com.ticketing.booking.dto.SeatHoldResult;
 import com.ticketing.booking.exception.SeatAlreadyHeldException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.concurrent.CompletableFuture;
+
 @Component
+@Slf4j
 public class InventoryClient {
 
     private final WebClient inventoryWebClient; // matches the @Bean method name — Spring autowires by name here
@@ -16,19 +23,52 @@ public class InventoryClient {
         this.inventoryWebClient = inventoryWebClient;
     }
 
-    public Mono<SeatHoldResult> holdSeat(Long seatId, Long bookingId) {
+    @CircuitBreaker(name = "inventoryService", fallbackMethod = "holdSeatFallback")
+    @Retry(name = "inventoryService")
+    @TimeLimiter(name = "inventoryService")
+    public CompletableFuture<SeatHoldResult> holdSeat(Long seatId, Long bookingId) {
         return inventoryWebClient.post()
         .uri("/api/v1/seats/{seatId}/hold?bookingId={bookingId}", seatId, bookingId)
                 .retrieve()
                 .onStatus(status -> status.value() == 409,
                         response -> Mono.error(new SeatAlreadyHeldException("Seat " + seatId + " is no longer available")))
-                .bodyToMono(SeatHoldResult.class);
+                .bodyToMono(SeatHoldResult.class)
+                .toFuture();
     }
 
-    public Mono<Void> updateSeatStatus(Long seatId, boolean successStatus) {
+    public CompletableFuture<SeatHoldResult> holdSeatFallback(Long seatId, Long bookingId,
+                                                              Throwable throwable) {
+        log.error("inventory-service circuit open or retries exhausted for seat {}: {}",
+                seatId, throwable.getMessage());
+        return CompletableFuture.completedFuture(
+                new SeatHoldResult(seatId, "UNAVAILABLE", false));
+    }
+
+    @CircuitBreaker(name = "inventoryService", fallbackMethod = "releaseSeatFallback")
+    @Retry(name = "inventoryService")
+    @TimeLimiter(name = "inventoryService")
+    public CompletableFuture<Void> releaseSeat(Long seatId) {
+        return inventoryWebClient.post()
+                .uri("/api/v1/seats/{seatId}/release", seatId)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .toFuture();
+    }
+
+    @CircuitBreaker(name = "inventoryService", fallbackMethod = "releaseSeatFallback")
+    @Retry(name = "inventoryService")
+    @TimeLimiter(name = "inventoryService")
+    public CompletableFuture<Void> updateSeatStatus(Long seatId, boolean successStatus) {
         return inventoryWebClient.post()
                 .uri("/api/v1/seats/{seatId}/status?success={successStatus}", seatId, successStatus)
                 .retrieve()
-                .bodyToMono(Void.class);
+                .bodyToMono(Void.class)
+                .toFuture();
+    }
+
+    public CompletableFuture<Void> releaseSeatFallback(Long seatId, Throwable throwable) {
+        log.error("CRITICAL: failed to release seat {} — manual intervention may be needed: {}",
+                seatId, throwable.getMessage());
+        return CompletableFuture.completedFuture(null);
     }
 }

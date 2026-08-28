@@ -29,7 +29,7 @@ public class BookingController {
             @PathVariable("bookingId") Long bookingId,
             @RequestParam("amount") BigDecimal amount,
             @RequestParam("seatId") Long seatId) {
-        return paymentClient.createPaymentOrder(bookingId, seatId, amount)
+    return Mono.fromFuture(() -> paymentClient.createPaymentOrder(bookingId, seatId, amount))
                 .map(ResponseEntity::ok);
     }
 }

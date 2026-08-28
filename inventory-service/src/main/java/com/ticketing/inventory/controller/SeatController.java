@@ -43,4 +43,10 @@ public class SeatController {
         seatService.changeSeatStatus(seatId, success);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{seatId}/release")
+    public ResponseEntity<Void> release(@PathVariable("seatId") Long seatId) {
+        seatService.releaseSeat(seatId);
+        return ResponseEntity.noContent().build();
+    }
 }

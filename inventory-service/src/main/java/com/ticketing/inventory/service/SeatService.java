@@ -91,6 +91,14 @@ public class SeatService {
         seatRepository.save(seat);
     }
 
+    @Transactional
+    public void releaseSeat(Long seatId) {
+        Seat seat = seatRepository.findById(seatId).orElseThrow();
+        seat.setStatus(SeatStatus.AVAILABLE);
+        seat.setHeldUntil(null);
+        seatRepository.save(seat);
+    }
+
     private SeatResponse toResponse(Seat s) {
         return new SeatResponse(s.getId(), s.getEventId(), s.getSeatNumber(), s.getSeatSection(), s.getPrice(), s.getStatus());
     }
