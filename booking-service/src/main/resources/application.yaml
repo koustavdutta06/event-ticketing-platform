@@ -6,9 +6,9 @@ spring:
     name: booking-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5435/booking_db
-    username: booking_user
-    password: booking_pass
+    url: ${BOOKING_DB_URL:jdbc:postgresql://localhost:5435/booking_db}
+    username: ${BOOKING_DB_USERNAME:booking_user}
+    password: ${BOOKING_DB_PASSWORD:booking_pass}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,7 +23,7 @@ spring:
     baseline-on-migrate: false
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -129,13 +129,13 @@ management:
       enabled: true
 
 inventory-service:
-  base-url: http://localhost:8082
+  base-url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
 
 catalog-service:
-  base-url: http://localhost:8081
+  base-url: ${CATALOG_SERVICE_URL:http://localhost:8081}
 
 payment-service:
-  base-url: http://localhost:8086
+  base-url: ${PAYMENT_SERVICE_URL:http://localhost:8086}
 
 jwt:
   secret: ${JWT_SECRET}

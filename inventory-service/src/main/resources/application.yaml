@@ -5,9 +5,9 @@ spring:
   application:
     name: inventory-service
   datasource:
-    url: jdbc:postgresql://localhost:5434/inventory_db
-    username: inventory_user
-    password: inventory_pass
+    url: ${INVENTORY_DB_URL:jdbc:postgresql://localhost:5434/inventory_db}
+    username: ${INVENTORY_DB_USERNAME:inventory_user}
+    password: ${INVENTORY_DB_PASSWORD:inventory_pass}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -18,7 +18,7 @@ spring:
     baseline-on-migrate: false
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer

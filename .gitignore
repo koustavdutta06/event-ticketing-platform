@@ -46,3 +46,6 @@ build/
 razorpay_test_api_keys*.csv
 
 *_commands.txt
+
+.env
+*.env

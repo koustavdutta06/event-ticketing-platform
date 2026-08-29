@@ -5,9 +5,9 @@ spring:
   application:
     name: catalog-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/catalog_db
-    username: catalog_user
-    password: catalog_pass
+    url: ${CATALOG_DB_URL:jdbc:postgresql://localhost:5433/catalog_db}
+    username: ${CATALOG_DB_USERNAME:catalog_user}
+    password: ${CATALOG_DB_PASSWORD:catalog_pass}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -20,6 +20,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
   data:
     redis:

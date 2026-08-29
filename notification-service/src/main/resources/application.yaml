@@ -6,7 +6,7 @@ spring:
   application:
     name: notification-service
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: notification-service
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -15,9 +15,9 @@ spring:
         spring.json.trusted.packages: "com.ticketing.events"
 #        spring.json.type.mapping: seatHeld:com.ticketing.events.SeatHeldEvent,seatHoldExpired:com.ticketing.events.SeatHoldExpiredEvent
   mail:
-    host: smtp.resend.com
-    port: 587
-    username: resend
+    host: ${RESEND_SMTP_HOST:smtp.resend.com}
+    port: ${RESEND_SMTP_PORT:587}
+    username: ${RESEND_SMTP_USERNAME:resend}
     password: ${RESEND_API_KEY}
     properties:
       mail:

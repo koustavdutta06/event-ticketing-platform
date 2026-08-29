@@ -5,7 +5,7 @@ spring:
   application:
     name: payment-service
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -23,7 +23,7 @@ razorpay:
   key-id: ${RAZORPAY_KEY_ID}
   key-secret: ${RAZORPAY_KEY_SECRET}
   webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
-  currency: INR
+  currency: ${RAZORPAY_CURRENCY:INR}
 
 # payment-service/application.yml
 resilience4j:
@@ -50,3 +50,6 @@ resilience4j:
 logging:
   level:
     com.ticketing.payment: DEBUG
+
+inventory-service:
+  base-url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
