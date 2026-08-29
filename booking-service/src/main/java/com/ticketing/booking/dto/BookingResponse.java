@@ -1,3 +1,5 @@
 package com.ticketing.booking.dto;
 
-public record BookingResponse(Long bookingId, String status, String message) {}
+import java.time.LocalDateTime;
+
+public record BookingResponse(Long bookingId, String status, String message, LocalDateTime holdExpiresAt) {}

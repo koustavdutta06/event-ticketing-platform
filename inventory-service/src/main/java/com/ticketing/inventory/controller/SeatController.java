@@ -33,14 +33,21 @@ public class SeatController {
 
     @PostMapping("/{seatId}/hold")
     public ResponseEntity<SeatHoldResponse> holdSeat(@PathVariable("seatId") Long seatId,
-                                                     @RequestParam("bookingId") Long bookingId) {
-        return ResponseEntity.ok(seatService.holdSeat(seatId, bookingId));
+                                                     @RequestParam("bookingId") Long bookingId,
+                                                     @RequestParam("eventId") Long eventId) {
+        return ResponseEntity.ok(seatService.holdSeat(seatId, bookingId, eventId));
     }
 
     @PostMapping("/{seatId}/status")
     public ResponseEntity<Void> release(@PathVariable("seatId") Long seatId, @RequestParam("success") boolean success) {
         log.info("Received request for seatId {} and successStatus is {}", seatId, success);
         seatService.changeSeatStatus(seatId, success);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{seatId}/release")
+    public ResponseEntity<Void> release(@PathVariable("seatId") Long seatId) {
+        seatService.releaseSeat(seatId);
         return ResponseEntity.noContent().build();
     }
 }

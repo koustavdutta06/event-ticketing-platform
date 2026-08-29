@@ -23,6 +23,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/webhooks/razorpay").hasAuthority("ROLE_WEBHOOK")
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().permitAll())
                 .addFilterBefore(new RazorpayWebhookAuthFilter(webhookSecret), UsernamePasswordAuthenticationFilter.class);
         return http.build();

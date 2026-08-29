@@ -6,13 +6,18 @@ spring:
     name: auth-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5436/auth_db
-    username: auth_user
-    password: auth_pass
+    url: ${AUTH_DB_URL:jdbc:postgresql://localhost:5436/auth_db}
+    username: ${AUTH_DB_USERNAME:auth_user}
+    password: ${AUTH_DB_PASSWORD:auth_pass}
+
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
 
 springdoc:
   swagger-ui:
@@ -20,4 +25,13 @@ springdoc:
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration-ms: 3600000   # 1 hour
+  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

@@ -1,0 +1,8 @@
+# .dockerignore
+**/target/
+**/.idea/
+**/.git/
+**/*.iml
+**/node_modules/
+**/.env
+**/*.log

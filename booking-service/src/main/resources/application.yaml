@@ -6,20 +6,24 @@ spring:
     name: booking-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5435/booking_db
-    username: booking_user
-    password: booking_pass
+    url: ${BOOKING_DB_URL:jdbc:postgresql://localhost:5435/booking_db}
+    username: ${BOOKING_DB_USERNAME:booking_user}
+    password: ${BOOKING_DB_PASSWORD:booking_pass}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         jdbc:
           time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -30,14 +34,110 @@ spring:
       properties:
         spring.json.trusted.packages: "com.ticketing.events"
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventoryService:
+        # How many calls to sample when deciding to open the circuit
+        sliding-window-size: 10
+        # Open circuit if >= 50% of calls in the window fail
+        failure-rate-threshold: 50
+        # How long to wait in OPEN state before trying again (HALF-OPEN)
+        wait-duration-in-open-state: 10s
+        # How many calls to allow in HALF-OPEN state to test recovery
+        permitted-number-of-calls-in-half-open-state: 3
+        # Don't open circuit until at least this many calls have been made
+        minimum-number-of-calls: 5
+        # Which exceptions count as failures (connection issues, timeouts)
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+        # Which exceptions explicitly do NOT count as failures
+        # (a 409 Conflict / 400 Bad Request is a valid business response, not a service failure)
+        ignore-exceptions:
+          - com.ticketing.booking.exception.SeatAlreadyHeldException
+          - com.ticketing.booking.exception.InvalidSeatForEventException
+
+      catalogService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        minimum-number-of-calls: 5
+
+      paymentService:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s  # longer — give payment-service more recovery time
+        minimum-number-of-calls: 3
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+
+  retry:
+    instances:
+      inventoryService:
+        max-attempts: 3
+        wait-duration: 500ms
+        # Only retry on transient network/IO errors, not business logic errors
+        retry-exceptions:
+          - java.io.IOException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+        # Never retry on these — they're deterministic failures, retrying wastes time
+        ignore-exceptions:
+          - com.ticketing.booking.exception.SeatAlreadyHeldException
+          - com.ticketing.booking.exception.EventNotFoundException
+          - com.ticketing.booking.exception.InvalidSeatForEventException
+
+      catalogService:
+        max-attempts: 3
+        wait-duration: 300ms
+        retry-exceptions:
+          - java.io.IOException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+
+      paymentService:
+        max-attempts: 2        # payment calls — fewer retries, idempotency is harder to guarantee
+        wait-duration: 1000ms
+        retry-exceptions:
+          - java.io.IOException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+
+  timelimiter:
+    instances:
+      inventoryService:
+        timeout-duration: 3s
+        cancel-running-future: true
+
+      catalogService:
+        timeout-duration: 2s
+        cancel-running-future: true
+
+      paymentService:
+        timeout-duration: 5s   # Razorpay order creation can be legitimately slower
+        cancel-running-future: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers,retries
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
 inventory-service:
-  base-url: http://localhost:8082
+  base-url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
 
 catalog-service:
-  base-url: http://localhost:8081
+  base-url: ${CATALOG_SERVICE_URL:http://localhost:8081}
 
 payment-service:
-  base-url: http://localhost:8086
+  base-url: ${PAYMENT_SERVICE_URL:http://localhost:8086}
 
 jwt:
   secret: ${JWT_SECRET}

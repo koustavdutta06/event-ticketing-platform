@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -45,11 +46,18 @@ public class PaymentEventListener {
         Booking booking = bookingRepository.findById(event.bookingId())
                 .orElseThrow(() -> new IllegalStateException("Booking not found: " + event.bookingId()));
 
+        // IDEMPOTENCY GUARD: duplicate Kafka delivery (at-least-once semantics) —
+        // if we've already confirmed this booking, skip re-processing.
     if (booking.getStatus() == BookingStatus.CONFIRMED) {
-        log.info("Booking {} already CONFIRMED — duplicate event ignored", event.bookingId());
+            log.info("Booking {} already CONFIRMED — duplicate payment event ignored",
+                booking.getId());
         return;
     }
 
+        // RACE-CONDITION GUARD: protects against a payment succeeding on Razorpay's
+        // side AFTER the seat hold already expired and the booking was auto-cancelled
+        // by SeatEventListener. We cannot honor a late confirmation here — the seat
+        // may already have been re-sold to someone else.
     if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
         // Booking already moved on — most likely the hold expired before this payment
         // event arrived. Payment succeeded on the gateway side, but we can't honor it.
@@ -71,7 +79,7 @@ public class PaymentEventListener {
         bookingRepository.save(booking);
 
         try {
-            inventoryClient.updateSeatStatus(booking.getSeatId(), true).block();
+            inventoryClient.updateSeatStatus(booking.getSeatId(), true).get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.error("CRITICAL: failed to confirm seat {} for confirmed booking {} — manual intervention may be needed: {}",
                     booking.getSeatId(), booking.getId(), e.getMessage());
@@ -105,7 +113,7 @@ public class PaymentEventListener {
             // .block() forces this reactive call to complete synchronously before proceeding —
             // acceptable here because we're already inside a blocking Kafka listener thread,
             // and we genuinely need to know if this compensating action failed.
-            inventoryClient.updateSeatStatus(booking.getSeatId(), false).block();
+            inventoryClient.updateSeatStatus(booking.getSeatId(), false).get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.error("CRITICAL: failed to release seat {} for cancelled booking {} — manual intervention may be needed: {}",
                     booking.getSeatId(), booking.getId(), e.getMessage());

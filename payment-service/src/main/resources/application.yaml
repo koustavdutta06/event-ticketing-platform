@@ -5,7 +5,7 @@ spring:
   application:
     name: payment-service
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -13,6 +13,11 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000  # 5 minutes in milliseconds
+
 #    jpa:
 #      properties:
 #        hibernate:
@@ -23,8 +28,42 @@ razorpay:
   key-id: ${RAZORPAY_KEY_ID}
   key-secret: ${RAZORPAY_KEY_SECRET}
   webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
-  currency: INR
+  currency: ${RAZORPAY_CURRENCY:INR}
+
+# payment-service/application.yml
+resilience4j:
+  circuitbreaker:
+    instances:
+      razorpay:
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 30s
+        minimum-number-of-calls: 3
+        record-exceptions:
+          - java.io.IOException
+          - com.razorpay.RazorpayException
+
+  retry:
+    instances:
+      razorpay:
+        max-attempts: 2
+        wait-duration: 2000ms
+        retry-exceptions:
+          - java.io.IOException
+          - com.razorpay.RazorpayException
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:
     com.ticketing.payment: DEBUG
+
+inventory-service:
+  base-url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
