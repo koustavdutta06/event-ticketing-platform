@@ -1,4 +1,4 @@
-# catalog-service/Dockerfile
+# payment-service/Dockerfile
 # ─────────────────────────────────────────────
 # Stage 1: Build
 # ─────────────────────────────────────────────
@@ -26,12 +26,12 @@ COPY common-events/src common-events/src
 # Download dependencies before copying source —
 # this layer is cached as long as pom.xml files don't change
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn dependency:go-offline -pl catalog-service -am -q
+    mvn dependency:go-offline -pl payment-service -am -q
 
 # Now copy source and build
-COPY catalog-service/src catalog-service/src
+COPY payment-service/src payment-service/src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn package -pl catalog-service -am -DskipTests -q
+    mvn package -pl payment-service -am -DskipTests -q
 
 # ─────────────────────────────────────────────
 # Stage 2: Runtime
@@ -45,7 +45,7 @@ RUN addgroup -S ticketing && adduser -S ticketing -G ticketing
 WORKDIR /app
 
 # Copy only the fat JAR from the builder stage
-COPY --from=builder /build/catalog-service/target/*.jar app.jar
+COPY --from=builder /build/payment-service/target/*.jar app.jar
 
 # Set file ownership to non-root user
 RUN chown ticketing:ticketing app.jar
