@@ -33,6 +33,15 @@ spring:
     redis:
       time-to-live: 300000  # 5 minutes in milliseconds
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

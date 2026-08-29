@@ -15,16 +15,25 @@ spring:
         spring.json.trusted.packages: "com.ticketing.events"
 #        spring.json.type.mapping: seatHeld:com.ticketing.events.SeatHeldEvent,seatHoldExpired:com.ticketing.events.SeatHoldExpiredEvent
   mail:
-    host: ${RESEND_SMTP_HOST:smtp.resend.com}
-    port: ${RESEND_SMTP_PORT:587}
-    username: ${RESEND_SMTP_USERNAME:resend}
-    password: ${RESEND_API_KEY}
+    host: ${SMTP_HOST:smtp.resend.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:resend}
+    password: ${SMTP_PASSWORD}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:

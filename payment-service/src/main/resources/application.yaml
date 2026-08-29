@@ -13,6 +13,11 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000  # 5 minutes in milliseconds
+
 #    jpa:
 #      properties:
 #        hibernate:
@@ -46,6 +51,15 @@ resilience4j:
         retry-exceptions:
           - java.io.IOException
           - com.razorpay.RazorpayException
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:

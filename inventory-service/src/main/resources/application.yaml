@@ -29,6 +29,15 @@ spring:
       properties:
         spring.json.trusted.packages: "com.ticketing.events"
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
