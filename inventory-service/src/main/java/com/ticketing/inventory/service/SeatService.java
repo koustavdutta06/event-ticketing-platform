@@ -6,6 +6,7 @@ import com.ticketing.inventory.dto.SeatRequest;
 import com.ticketing.inventory.dto.SeatResponse;
 import com.ticketing.inventory.entities.Seat;
 import com.ticketing.inventory.enums.SeatStatus;
+import com.ticketing.inventory.exception.SeatEventMismatchException;
 import com.ticketing.inventory.publisher.SeatEventPublisher;
 import com.ticketing.inventory.repository.SeatRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -61,12 +62,17 @@ public class SeatService {
 //    }
 
     @Transactional
-    public SeatHoldResponse holdSeat(Long seatId, Long bookingId) {
+    public SeatHoldResponse holdSeat(Long seatId, Long bookingId, Long eventId) {
         Seat seat = seatRepository.findById(seatId)
                 .orElseThrow(() -> new EntityNotFoundException("Seat not found: " + seatId));
 
+        if (!seat.getEventId().equals(eventId)) {
+            throw new SeatEventMismatchException(
+                    "Seat " + seatId + " does not belong to event " + eventId);
+        }
+
         if (seat.getStatus() != SeatStatus.AVAILABLE) {
-            return new SeatHoldResponse(seatId, seat.getStatus(), false);
+            return new SeatHoldResponse(seatId, seat.getStatus(), false, seat.getPrice(), seat.getHeldUntil());
         }
 
         seat.setStatus(SeatStatus.HELD);
@@ -80,7 +86,7 @@ public class SeatService {
                 new SeatHeldEvent(seatId, seat.getEventId(), bookingId, now, expiryTime)
         );
 
-        return new SeatHoldResponse(seatId, SeatStatus.HELD, true);
+        return new SeatHoldResponse(seatId, SeatStatus.HELD, true, seat.getPrice(), expiryTime);
     }
 
     @Transactional

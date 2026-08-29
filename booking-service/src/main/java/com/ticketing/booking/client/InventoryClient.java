@@ -1,6 +1,7 @@
 package com.ticketing.booking.client;
 
 import com.ticketing.booking.dto.SeatHoldResult;
+import com.ticketing.booking.exception.InvalidSeatForEventException;
 import com.ticketing.booking.exception.SeatAlreadyHeldException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -26,22 +27,25 @@ public class InventoryClient {
     @CircuitBreaker(name = "inventoryService", fallbackMethod = "holdSeatFallback")
     @Retry(name = "inventoryService")
     @TimeLimiter(name = "inventoryService")
-    public CompletableFuture<SeatHoldResult> holdSeat(Long seatId, Long bookingId) {
+    public CompletableFuture<SeatHoldResult> holdSeat(Long seatId, Long bookingId, Long eventId) {
         return inventoryWebClient.post()
-        .uri("/api/v1/seats/{seatId}/hold?bookingId={bookingId}", seatId, bookingId)
+        .uri("/api/v1/seats/{seatId}/hold?bookingId={bookingId}&eventId={eventId}", seatId, bookingId, eventId)
                 .retrieve()
                 .onStatus(status -> status.value() == 409,
                         response -> Mono.error(new SeatAlreadyHeldException("Seat " + seatId + " is no longer available")))
+                .onStatus(status -> status.value() == 400,
+                        response -> Mono.error(new InvalidSeatForEventException(
+                                "Seat " + seatId + " does not belong to event " + eventId)))
                 .bodyToMono(SeatHoldResult.class)
                 .toFuture();
     }
 
-    public CompletableFuture<SeatHoldResult> holdSeatFallback(Long seatId, Long bookingId,
+    public CompletableFuture<SeatHoldResult> holdSeatFallback(Long seatId, Long bookingId, Long eventId,
                                                               Throwable throwable) {
         log.error("inventory-service circuit open or retries exhausted for seat {}: {}",
                 seatId, throwable.getMessage());
         return CompletableFuture.completedFuture(
-                new SeatHoldResult(seatId, "UNAVAILABLE", false));
+                new SeatHoldResult(seatId, "UNAVAILABLE", false, null, null));
     }
 
     @CircuitBreaker(name = "inventoryService", fallbackMethod = "releaseSeatFallback")

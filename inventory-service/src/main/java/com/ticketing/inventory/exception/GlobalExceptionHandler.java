@@ -19,4 +19,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body("Seat was modified concurrently, please retry");
     }
+
+    @ExceptionHandler(SeatEventMismatchException.class)
+    public ResponseEntity<String> handleSeatEventMismatch(SeatEventMismatchException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
 }

@@ -33,8 +33,9 @@ public class SeatController {
 
     @PostMapping("/{seatId}/hold")
     public ResponseEntity<SeatHoldResponse> holdSeat(@PathVariable("seatId") Long seatId,
-                                                     @RequestParam("bookingId") Long bookingId) {
-        return ResponseEntity.ok(seatService.holdSeat(seatId, bookingId));
+                                                     @RequestParam("bookingId") Long bookingId,
+                                                     @RequestParam("eventId") Long eventId) {
+        return ResponseEntity.ok(seatService.holdSeat(seatId, bookingId, eventId));
     }
 
     @PostMapping("/{seatId}/status")

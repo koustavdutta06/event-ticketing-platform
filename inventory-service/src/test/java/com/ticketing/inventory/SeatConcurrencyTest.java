@@ -68,7 +68,7 @@ class SeatConcurrencyTest {
                 try {
                     readyLatch.countDown();
                     startLatch.await(); // all threads block here until released together
-                    var result = seatService.holdSeat(seatId, 5L);
+                    var result = seatService.holdSeat(seatId, 5L, 2L);
                     if (result.success()) {
                         successCount.incrementAndGet();
                     } else {

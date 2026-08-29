@@ -54,9 +54,10 @@ resilience4j:
           - java.util.concurrent.TimeoutException
           - org.springframework.web.reactive.function.client.WebClientRequestException
         # Which exceptions explicitly do NOT count as failures
-        # (a 409 Conflict is a valid business response, not a service failure)
+        # (a 409 Conflict / 400 Bad Request is a valid business response, not a service failure)
         ignore-exceptions:
           - com.ticketing.booking.exception.SeatAlreadyHeldException
+          - com.ticketing.booking.exception.InvalidSeatForEventException
 
       catalogService:
         sliding-window-size: 10
@@ -87,6 +88,7 @@ resilience4j:
         ignore-exceptions:
           - com.ticketing.booking.exception.SeatAlreadyHeldException
           - com.ticketing.booking.exception.EventNotFoundException
+          - com.ticketing.booking.exception.InvalidSeatForEventException
 
       catalogService:
         max-attempts: 3
