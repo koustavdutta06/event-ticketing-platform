@@ -167,6 +167,8 @@ services:
       - "8081:8081"
     networks:
       - ticketing-network
+    volumes:
+      - ./logs/catalog-service:/app/logs
     environment:
       CATALOG_DB_URL: jdbc:postgresql://catalog-postgres:5432/catalog_db
       CATALOG_DB_USERNAME: ${CATALOG_DB_USERNAME:-catalog_user}
@@ -204,6 +206,8 @@ services:
       - "8082:8082"
     networks:
       - ticketing-network
+    volumes:
+      - ./logs/inventory-service:/app/logs
     environment:
       INVENTORY_DB_URL: jdbc:postgresql://inventory-postgres:5432/inventory_db
       INVENTORY_DB_USERNAME: ${INVENTORY_DB_USERNAME:-inventory_user}
@@ -237,6 +241,8 @@ services:
       - "8085:8085"
     networks:
       - ticketing-network
+    volumes:
+      - ./logs/auth-service:/app/logs
     environment:
       AUTH_DB_URL: jdbc:postgresql://auth-postgres:5432/auth_db
       AUTH_DB_USERNAME: ${AUTH_DB_USERNAME:-auth_user}
@@ -268,6 +274,8 @@ services:
       - "8083:8083"
     networks:
       - ticketing-network
+    volumes:
+      - ./logs/booking-service:/app/logs
     environment:
       BOOKING_DB_URL: jdbc:postgresql://booking-postgres:5432/booking_db
       BOOKING_DB_USERNAME: ${BOOKING_DB_USERNAME:-booking_user}
@@ -309,6 +317,8 @@ services:
       - "8086:8086"
     networks:
       - ticketing-network
+    volumes:
+      - ./logs/payment-service:/app/logs
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       REDIS_HOST: redis
@@ -347,6 +357,8 @@ services:
       - "8084:8084"
     networks:
       - ticketing-network
+    volumes:
+      - ./logs/notification-service:/app/logs
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SMTP_HOST: smtp.resend.com

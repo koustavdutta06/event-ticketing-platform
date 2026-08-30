@@ -107,15 +107,15 @@ resilience4j:
   timelimiter:
     instances:
       inventoryService:
-        timeout-duration: 3s
+        timeout-duration: 20s
         cancel-running-future: true
 
       catalogService:
-        timeout-duration: 2s
+        timeout-duration: 20s
         cancel-running-future: true
 
       paymentService:
-        timeout-duration: 5s   # Razorpay order creation can be legitimately slower
+        timeout-duration: 30s   # Razorpay order creation can be legitimately slower
         cancel-running-future: true
 
 management:
@@ -142,4 +142,13 @@ payment-service:
 jwt:
   secret: ${JWT_SECRET}
   expiration-ms: 3600000
+
+logging:
+  file:
+    name: logs/booking-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 100MB
 

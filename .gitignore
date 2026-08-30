@@ -4,6 +4,9 @@
 # Log file
 *.log
 
+# Host-mounted service log directories (see docker-compose.yml)
+/logs/
+
 # BlueJ files
 *.ctxt
 
@@ -49,3 +52,5 @@ razorpay_test_api_keys*.csv
 
 .env
 *.env
+
+*/sample-data/*

@@ -39,3 +39,10 @@ logging:
   level:
     root: INFO
     com.ticketing.notification: DEBUG
+  file:
+    name: logs/notification-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 100MB

@@ -6,12 +6,14 @@ import com.ticketing.catalog.dto.EventStatusRequest;
 import com.ticketing.catalog.service.EventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/events")
 @RequiredArgsConstructor
@@ -36,6 +38,7 @@ public class EventController {
 
     @GetMapping("/{id}")
     public ResponseEntity<EventResponse> getById(@PathVariable("id") Long id) {
+        log.info("Recieved request for eventdetails for id {}", id);
         return ResponseEntity.ok(eventService.getEventById(id));
     }
 }

@@ -12,12 +12,14 @@ import com.ticketing.booking.exception.InvalidSeatForEventException;
 import com.ticketing.booking.exception.SeatAlreadyHeldException;
 import com.ticketing.booking.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BookingService {
@@ -28,11 +30,13 @@ public class BookingService {
     private final BookingRepository bookingRepository;
 
     public Mono<BookingResponse> initiateBooking(Long seatId, Long eventId) {
+        log.info("Initiating booking with seatId {} and eventId {}",seatId, eventId);
         return ReactiveSecurityContextHolder.getContext()
             .map(ctx -> (String) ctx.getAuthentication().getPrincipal())
             .flatMap(customerEmail ->
                 Mono.fromFuture(() -> catalogClient.getEvent(eventId))
                 .flatMap(event -> {
+                    log.info("Recieved event : {}", event);
                     if (!"PUBLISHED".equals(event.status())) {
                             return Mono.just(new BookingResponse(
                                 null, "REJECTED",
@@ -51,8 +55,10 @@ public class BookingService {
                             .build();
                     Booking savedBooking = bookingRepository.save(booking);
 
+                    log.info("saved booking and calling inventory service for holding seat {} for event {}", seatId, eventId);
                     return Mono.fromFuture(() -> inventoryClient.holdSeat(seatId, savedBooking.getId(), eventId))
                         .map(result -> {
+                            log.info("Recieved details from inventory service : {}", result);
                             if (result.success()){
                                 savedBooking.setAmount(result.price());
                                 savedBooking.setUpdatedAt(LocalDateTime.now());
