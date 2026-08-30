@@ -107,15 +107,15 @@ resilience4j:
   timelimiter:
     instances:
       inventoryService:
-        timeout-duration: 20s
+        timeout-duration: 3s
         cancel-running-future: true
 
       catalogService:
-        timeout-duration: 20s
+        timeout-duration: 2s
         cancel-running-future: true
 
       paymentService:
-        timeout-duration: 30s   # Razorpay order creation can be legitimately slower
+        timeout-duration: 5s   # Razorpay order creation can be legitimately slower
         cancel-running-future: true
 
 management:
