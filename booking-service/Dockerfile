@@ -50,6 +50,9 @@ COPY --from=builder /build/booking-service/target/*.jar app.jar
 # Set file ownership to non-root user
 RUN chown ticketing:ticketing app.jar
 
+# Directory for the file-based log output (mounted from the host via docker-compose)
+RUN mkdir -p /app/logs && chown ticketing:ticketing /app/logs
+
 # Switch to non-root user before running
 USER ticketing
 

@@ -35,6 +35,7 @@ public class SeatController {
     public ResponseEntity<SeatHoldResponse> holdSeat(@PathVariable("seatId") Long seatId,
                                                      @RequestParam("bookingId") Long bookingId,
                                                      @RequestParam("eventId") Long eventId) {
+        log.info("Recieved request for seatId {} and eventId {} and bookingId {}", seatId, eventId, bookingId);
         return ResponseEntity.ok(seatService.holdSeat(seatId, bookingId, eventId));
     }
 
