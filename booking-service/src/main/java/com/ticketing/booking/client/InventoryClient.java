@@ -42,6 +42,18 @@ public class InventoryClient {
 
     public CompletableFuture<SeatHoldResult> holdSeatFallback(Long seatId, Long bookingId, Long eventId,
                                                               Throwable throwable) {
+        // @CircuitBreaker's fallback intercepts every exception the guarded call throws —
+        // including SeatAlreadyHeldException/InvalidSeatForEventException, regardless of
+        // resilience4j's ignore-exceptions (that setting only affects failure-rate accounting,
+        // not fallback dispatch) — so those known business outcomes must be told apart here.
+        if (throwable instanceof InvalidSeatForEventException) {
+            return CompletableFuture.completedFuture(
+                    new SeatHoldResult(seatId, "EVENT_MISMATCH", false, null, null));
+        }
+        if (throwable instanceof SeatAlreadyHeldException) {
+            return CompletableFuture.completedFuture(
+                    new SeatHoldResult(seatId, "ALREADY_HELD", false, null, null));
+        }
         log.error("inventory-service circuit open or retries exhausted for seat {}: {}",
                 seatId, throwable.getMessage());
         return CompletableFuture.completedFuture(

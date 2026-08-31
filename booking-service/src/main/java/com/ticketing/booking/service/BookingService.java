@@ -8,8 +8,6 @@ import com.ticketing.booking.enums.BookingStatus;
 import com.ticketing.booking.dto.BookingResponse;
 import com.ticketing.booking.dto.PaymentOrderResponse;
 import com.ticketing.booking.exception.BookingNotFoundException;
-import com.ticketing.booking.exception.InvalidSeatForEventException;
-import com.ticketing.booking.exception.SeatAlreadyHeldException;
 import com.ticketing.booking.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,19 +69,14 @@ public class BookingService {
                                 savedBooking.setStatus(BookingStatus.CANCELLED);
                                 savedBooking.setUpdatedAt(LocalDateTime.now());
                                 bookingRepository.save(savedBooking);
-                                return new BookingResponse(savedBooking.getId(), "CANCELLED", "Seat unavailable", null);
+                                String message = switch (result.status()) {
+                                    case "EVENT_MISMATCH" -> "Seat does not belong to the specified event";
+                                    case "ALREADY_HELD", "HELD", "BOOKED" -> "Seat is no longer available";
+                                    default -> "Seat unavailable";
+                                };
+                                return new BookingResponse(savedBooking.getId(), "CANCELLED", message, null);
                             }
-                        })
-                        .onErrorResume(
-                            ex -> ex instanceof SeatAlreadyHeldException || ex instanceof InvalidSeatForEventException,
-                            ex -> {
-                                // Compensating action: seat hold was rejected, mark our own booking as cancelled
-                                savedBooking.setStatus(BookingStatus.CANCELLED);
-                                savedBooking.setUpdatedAt(LocalDateTime.now());
-                                bookingRepository.save(savedBooking);
-                                return Mono.just(new BookingResponse(
-                                        savedBooking.getId(), "CANCELLED", ex.getMessage(), null));
-                            });
+                        });
                     })
             );
     }
