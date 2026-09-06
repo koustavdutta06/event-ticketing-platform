@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command: ["sh", "-c", "until pg_isready -h auth-postgres -p 5432 -U auth_user; do echo waiting for auth-postgres; sleep 3; done"]
+      containers:
+        - name: auth-service
+          image: ticketing/auth-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8085
+          env:
+            - name: AUTH_DB_URL
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: AUTH_DB_URL }
+            - name: AUTH_DB_USERNAME
+              valueFrom:
+                secretKeyRef: { name: auth-db-secret, key: POSTGRES_USER }
+            - name: AUTH_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: auth-db-secret, key: POSTGRES_PASSWORD }
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: ticketing-secrets, key: JWT_SECRET }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: 8085 }
+            timeoutSeconds: 5
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8085 }
+            timeoutSeconds: 5
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8085 }
+            timeoutSeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 600m
+              memory: 384Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 8085
+      targetPort: 8085

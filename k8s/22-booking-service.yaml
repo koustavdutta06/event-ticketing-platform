@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command: ["sh", "-c", "until pg_isready -h booking-postgres -p 5432 -U booking_user; do echo waiting for booking-postgres; sleep 3; done"]
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z kafka-0.kafka.ticketing.svc.cluster.local 9092; do echo waiting for kafka; sleep 3; done"]
+        - name: wait-for-catalog-service
+          image: busybox:1.36
+          command: ["sh", "-c", "until wget -q -O- http://catalog-service:8081/actuator/health | grep -q '\"status\":\"UP\"'; do echo waiting for catalog-service; sleep 5; done"]
+        - name: wait-for-inventory-service
+          image: busybox:1.36
+          command: ["sh", "-c", "until wget -q -O- http://inventory-service:8082/actuator/health | grep -q '\"status\":\"UP\"'; do echo waiting for inventory-service; sleep 5; done"]
+      containers:
+        - name: booking-service
+          image: ticketing/booking-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+          env:
+            - name: BOOKING_DB_URL
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: BOOKING_DB_URL }
+            - name: BOOKING_DB_USERNAME
+              valueFrom:
+                secretKeyRef: { name: booking-db-secret, key: POSTGRES_USER }
+            - name: BOOKING_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: booking-db-secret, key: POSTGRES_PASSWORD }
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: ticketing-secrets, key: JWT_SECRET }
+            - name: CATALOG_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: CATALOG_SERVICE_URL }
+            - name: INVENTORY_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: INVENTORY_SERVICE_URL }
+            - name: PAYMENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: PAYMENT_SERVICE_URL }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: 8083 }
+            timeoutSeconds: 5
+            failureThreshold: 65
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8083 }
+            timeoutSeconds: 5
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8083 }
+            timeoutSeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 750m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-service
+spec:
+  selector:
+    app: booking-service
+  ports:
+    - port: 8083
+      targetPort: 8083

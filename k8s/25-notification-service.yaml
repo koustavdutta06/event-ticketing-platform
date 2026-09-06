@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z kafka-0.kafka.ticketing.svc.cluster.local 9092; do echo waiting for kafka; sleep 3; done"]
+      containers:
+        - name: notification-service
+          image: ticketing/notification-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8084
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: SMTP_HOST
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: SMTP_HOST }
+            - name: SMTP_PORT
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: SMTP_PORT }
+            - name: SMTP_USERNAME
+              valueFrom:
+                configMapKeyRef: { name: ticketing-config, key: SMTP_USERNAME }
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: ticketing-secrets, key: SMTP_PASSWORD }
+          startupProbe:
+            httpGet: { path: /actuator/health, port: 8084 }
+            timeoutSeconds: 5
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8084 }
+            timeoutSeconds: 5
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /actuator/health, port: 8084 }
+            timeoutSeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 600m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 8084
+      targetPort: 8084

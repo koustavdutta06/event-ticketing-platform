@@ -54,3 +54,6 @@ razorpay_test_api_keys*.csv
 *.env
 
 */sample-data/*
+
+# Locally-filled Kubernetes secret manifests — never commit real credentials
+k8s/*.local.yaml

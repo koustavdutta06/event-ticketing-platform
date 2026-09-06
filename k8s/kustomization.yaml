@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ticketing
+
+# Secrets (02-secrets.yaml / 02-secrets.local.yaml) are deliberately NOT listed here.
+# Re-running `kubectl apply -k k8s/` must never able to clobber real credentials back to
+# placeholders — apply whichever secrets file you want as its own separate step (see
+# k8s/README.md). `kubectl apply -k` will fail fast if secrets haven't been created yet,
+# which is the desired behavior.
+resources:
+  - 00-namespace.yaml
+  - 01-configmap.yaml
+  - 10-catalog-postgres.yaml
+  - 11-inventory-postgres.yaml
+  - 12-booking-postgres.yaml
+  - 13-auth-postgres.yaml
+  - 14-redis.yaml
+  - 15-kafka.yaml
+  - 16-kafka-topics-job.yaml
+  - 20-catalog-service.yaml
+  - 21-inventory-service.yaml
+  - 22-booking-service.yaml
+  - 23-auth-service.yaml
+  - 24-payment-service.yaml
+  - 25-notification-service.yaml
+  - 30-hpa.yaml
+  - 40-ingress.yaml
