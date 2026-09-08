@@ -5,19 +5,12 @@
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "3658194"
 	},
-	"variable": [
-		{ "key": "jwt", "value": "" },
-		{ "key": "venueId", "value": "" },
-		{ "key": "eventId", "value": "" },
-		{ "key": "seatId", "value": "" },
-		{ "key": "bookingId", "value": "" }
-	],
 	"item": [
 		{
-			"name": "Auth Service",
+			"name": "Inventory Service",
 			"item": [
 				{
-					"name": "Register",
+					"name": "Add seats",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -28,40 +21,26 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"email\": \"test@example.com\",\r\n    \"password\": \"SecurePass123\"\r\n}"
+							"raw": "{\r\n    \"eventId\": 4,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 1500\r\n}"
 						},
 						"url": {
-							"raw": "http://localhost:8085/api/v1/auth/register",
+							"raw": "http://localhost:8082/api/v1/seats",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8085",
+							"port": "8082",
 							"path": [
 								"api",
 								"v1",
-								"auth",
-								"register"
+								"seats"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Login",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const json = pm.response.json();",
-									"pm.collectionVariables.set(\"jwt\", json.token);",
-									"pm.test(\"got jwt\", function () { pm.expect(json.token).to.be.a(\"string\"); });"
-								]
-							}
-						}
-					],
+					"name": "Load seats from csv",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -70,94 +49,13 @@
 								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n    \"email\": \"test@example.com\",\r\n    \"password\": \"SecurePass123\"\r\n}"
-						},
-						"url": {
-							"raw": "http://localhost:8085/api/v1/auth/login",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8085",
-							"path": [
-								"api",
-								"v1",
-								"auth",
-								"login"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Admin - Batch Import (fast seed, alternative to manual Add venue/Create Event/Add seats)",
-			"item": [
-				{
-					"name": "Import venues + events (CSV)",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "venuesFile",
-									"type": "file",
-									"src": "C:/MyWorkspace/Intellij_WS/event-ticketing-platform/sample-data/venues.csv"
-								},
-								{
-									"key": "eventsFile",
-									"type": "file",
-									"src": "C:/MyWorkspace/Intellij_WS/event-ticketing-platform/sample-data/events.csv"
-								}
-							]
-						},
-						"url": {
-							"raw": "http://localhost:8081/api/v1/admin/imports/venues-events",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8081",
-							"path": [
-								"api",
-								"v1",
-								"admin",
-								"imports",
-								"venues-events"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Import seats (CSV)",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"// seats.csv is written for eventId 1 (\"Rock Legends Live\", already PUBLISHED)",
-									"pm.collectionVariables.set(\"eventId\", 1);"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
 						"body": {
 							"mode": "formdata",
 							"formdata": [
 								{
 									"key": "seatsFile",
 									"type": "file",
-									"src": "C:/MyWorkspace/Intellij_WS/event-ticketing-platform/sample-data/seats.csv"
+									"src": "/C:/MyWorkspace/Intellij_WS/event-ticketing-platform/sample-data/seats.csv"
 								}
 							]
 						},
@@ -178,26 +76,9 @@
 						}
 					},
 					"response": []
-				}
-			]
-		},
-		{
-			"name": "Catalog Service",
-			"item": [
+				},
 				{
-					"name": "Add venue",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const json = pm.response.json();",
-									"pm.collectionVariables.set(\"venueId\", json.id);"
-								]
-							}
-						}
-					],
+					"name": "Hold Seat",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -208,38 +89,34 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"name\": \"Saltlake stadium\",\r\n    \"city\": \"Kolkata\",\r\n    \"totalCapacity\": 60000\r\n}"
+							"raw": "{\r\n    \"eventId\": 1,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 49.99\r\n}"
 						},
 						"url": {
-							"raw": "http://localhost:8081/api/v1/venues",
+							"raw": "http://localhost:8082/api/v1/seats/4/hold?bookingId=1",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8081",
+							"port": "8082",
 							"path": [
 								"api",
 								"v1",
-								"venues"
+								"seats",
+								"4",
+								"hold"
+							],
+							"query": [
+								{
+									"key": "bookingId",
+									"value": "1"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Create Event",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const json = pm.response.json();",
-									"pm.collectionVariables.set(\"eventId\", json.id);"
-								]
-							}
-						}
-					],
+					"name": "Release Seat",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -250,7 +127,166 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"name\": \"Messi Event\",\r\n    \"venueId\": {{venueId}},\r\n    \"startTime\": \"2027-01-01T11:00:00\"\r\n}"
+							"raw": "{\r\n    \"eventId\": 1,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 49.99\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/v1/seats/4/release",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"seats",
+								"4",
+								"release"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seats for an event",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"eventId\": 1,\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 49.99\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/v1/seats?eventId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"seats"
+							],
+							"query": [
+								{
+									"key": "eventId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Booking Service",
+			"item": [
+				{
+					"name": "Book seat",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8083/api/v1/bookings?eventId=1&seatId=1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"api",
+								"v1",
+								"bookings"
+							],
+							"query": [
+								{
+									"key": "eventId",
+									"value": "1"
+								},
+								{
+									"key": "seatId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Make Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8083/api/v1/bookings/5/create-payment-order",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8083",
+							"path": [
+								"api",
+								"v1",
+								"bookings",
+								"5",
+								"create-payment-order"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Catelog Service",
+			"item": [
+				{
+					"name": "Create Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"Messi Event\",\r\n    \"venueId\": 6,\r\n    \"startTime\": \"2027-01-01T11:00:00\"\r\n}"
 						},
 						"url": {
 							"raw": "http://localhost:8081/api/v1/events",
@@ -280,7 +316,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"id\": {{eventId}},\r\n    \"status\": \"PUBLISHED\"\r\n}"
+							"raw": "{\r\n    \"id\": 4,\r\n    \"status\": \"PUBLISHED\"\r\n}"
 						},
 						"url": {
 							"raw": "http://localhost:8081/api/v1/events",
@@ -349,7 +385,7 @@
 							"raw": ""
 						},
 						"url": {
-							"raw": "http://localhost:8081/api/v1/events/{{eventId}}",
+							"raw": "http://localhost:8081/api/v1/events/1",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -359,7 +395,80 @@
 								"api",
 								"v1",
 								"events",
-								"{{eventId}}"
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add venue",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"Saltlake stadium\",\r\n    \"city\": \"Kolkata\",\r\n    \"totalCapacity\": 60000\r\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/venues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"v1",
+								"venues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Load venue and event from csv",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "venuesFile",
+									"type": "file",
+									"src": "/C:/MyWorkspace/Intellij_WS/event-ticketing-platform/sample-data/venues.csv"
+								},
+								{
+									"key": "eventsFile",
+									"type": "file",
+									"src": "/C:/MyWorkspace/Intellij_WS/event-ticketing-platform/sample-data/events.csv"
+								}
+							]
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/admin/imports/venues-events",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"imports",
+								"venues-events"
 							]
 						}
 					},
@@ -368,19 +477,23 @@
 			]
 		},
 		{
-			"name": "Inventory Service",
+			"name": "Auth Service",
 			"item": [
 				{
-					"name": "Add seats",
+					"name": "Register",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
-								"type": "text/javascript",
 								"exec": [
-									"const json = pm.response.json();",
-									"pm.collectionVariables.set(\"seatId\", json.id);"
-								]
+									"const response = pm.response.json();\r",
+									"\r",
+									"pm.environment.set(\"jwt_token\", response.token);\r",
+									"\r",
+									"console.log(\"JWT Token:\", response.token);"
+								],
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -394,37 +507,50 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"eventId\": {{eventId}},\r\n    \"seatNumber\": \"A12\",\r\n    \"seatSection\": \"Balcony\",\r\n    \"price\": 1500\r\n}"
+							"raw": "{\r\n    \"email\": \"test123@example.com\",\r\n    \"password\": \"12345\"\r\n}"
 						},
 						"url": {
-							"raw": "http://localhost:8082/api/v1/seats",
+							"raw": "http://localhost:8085/api/v1/auth/register",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8082",
+							"port": "8085",
 							"path": [
 								"api",
 								"v1",
-								"seats"
+								"auth",
+								"register"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Get Seats for an event",
+					"name": "Login",
 					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
 						{
 							"listen": "test",
 							"script": {
-								"type": "text/javascript",
 								"exec": [
-									"const json = pm.response.json();",
-									"if (Array.isArray(json) && json.length > 0) {",
-									"    pm.collectionVariables.set(\"seatId\", json[0].id);",
-									"}"
-								]
+									"const response = pm.response.json();\r",
+									"\r",
+									"pm.environment.set(\"jwt_token\", response.token);\r",
+									"\r",
+									"console.log(\"JWT Token:\", response.token);"
+								],
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -441,136 +567,20 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": ""
+							"raw": "{\r\n    \"email\": \"test@example.com\",\r\n    \"password\": \"12345\"\r\n}"
 						},
 						"url": {
-							"raw": "http://localhost:8082/api/v1/seats?eventId={{eventId}}",
+							"raw": "http://localhost:8085/api/v1/auth/login",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8082",
+							"port": "8085",
 							"path": [
 								"api",
 								"v1",
-								"seats"
-							],
-							"query": [
-								{
-									"key": "eventId",
-									"value": "{{eventId}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Release Seat (manual utility - not needed in normal flow)",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
-						"url": {
-							"raw": "http://localhost:8082/api/v1/seats/{{seatId}}/release",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8082",
-							"path": [
-								"api",
-								"v1",
-								"seats",
-								"{{seatId}}",
-								"release"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Booking Service",
-			"item": [
-				{
-					"name": "Book seat",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"const json = pm.response.json();",
-									"pm.collectionVariables.set(\"bookingId\", json.bookingId);",
-									"pm.test(\"booking not rejected\", function () { pm.expect(json.status).to.not.eql(\"REJECTED\"); });"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{jwt}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:8083/api/v1/bookings?eventId={{eventId}}&seatId={{seatId}}",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8083",
-							"path": [
-								"api",
-								"v1",
-								"bookings"
-							],
-							"query": [
-								{
-									"key": "eventId",
-									"value": "{{eventId}}"
-								},
-								{
-									"key": "seatId",
-									"value": "{{seatId}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Payment Order",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{jwt}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:8083/api/v1/bookings/{{bookingId}}/create-payment-order",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "8083",
-							"path": [
-								"api",
-								"v1",
-								"bookings",
-								"{{bookingId}}",
-								"create-payment-order"
+								"auth",
+								"login"
 							]
 						}
 					},

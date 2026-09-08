@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: payment-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8086"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       initContainers:
         - name: wait-for-kafka
@@ -52,6 +56,15 @@ spec:
             - name: INVENTORY_SERVICE_URL
               valueFrom:
                 configMapKeyRef: { name: ticketing-config, key: INVENTORY_SERVICE_URL }
+            - name: ZIPKIN_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: ZIPKIN_ENDPOINT }
+            - name: LOGSTASH_HOST
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_HOST }
+            - name: LOGSTASH_PORT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_PORT }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8086 }
             timeoutSeconds: 5

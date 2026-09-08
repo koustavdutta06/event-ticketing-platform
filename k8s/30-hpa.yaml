@@ -16,6 +16,12 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  behavior:
+    scaleUp:
+      # Spring Boot + Hibernate + Flyway startup briefly looks like a sustained CPU
+      # spike to metrics-server; without this, HPA scales up on every fresh pod start,
+      # and the extra replicas fight the still-starting one for CPU on this small node.
+      stabilizationWindowSeconds: 120
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -35,6 +41,9 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -54,6 +63,9 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -73,6 +85,9 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -92,6 +107,9 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -111,3 +129,6 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120

@@ -9,21 +9,21 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     @Bean
-    public WebClient inventoryWebClient(@Value("${inventory-service.base-url}") String baseUrl) {
-        return WebClient.builder()
+    public WebClient inventoryWebClient(WebClient.Builder builder, @Value("${inventory-service.base-url}") String baseUrl) {
+        return builder
                 .baseUrl(baseUrl)
                 .build();
     }
 
     @Bean
-    public WebClient catalogWebClient(@Value("${catalog-service.base-url}") String baseUrl) {
-        return WebClient.builder()
+    public WebClient catalogWebClient(WebClient.Builder builder, @Value("${catalog-service.base-url}") String baseUrl) {
+        return builder
                 .baseUrl(baseUrl)
                 .build();
     }
 
     @Bean
-    public WebClient paymentWebClient(@Value("${payment-service.base-url}") String baseUrl) {
-        return WebClient.builder().baseUrl(baseUrl).build();
+    public WebClient paymentWebClient(WebClient.Builder builder, @Value("${payment-service.base-url}") String baseUrl) {
+        return builder.baseUrl(baseUrl).build();
     }
 }

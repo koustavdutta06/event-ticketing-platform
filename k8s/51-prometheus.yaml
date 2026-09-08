@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+---
+# Namespace-scoped only — pod discovery below is restricted to the `ticketing` namespace,
+# so a cluster-wide ClusterRole isn't needed.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+roleRef:
+  kind: Role
+  name: prometheus
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - /etc/prometheus/rules/alerts.yml
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Discovers every pod in the `ticketing` namespace that opts in via
+      # prometheus.io/scrape: "true" (see the annotations added to 20-25-*-service.yaml).
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['ticketing']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+      - job_name: kafka-exporter
+        static_configs:
+          - targets: ['kafka-exporter:9308']
+
+      # Zipkin exposes Prometheus-format metrics natively at /prometheus.
+      - job_name: zipkin
+        metrics_path: /prometheus
+        static_configs:
+          - targets: ['zipkin:9411']
+
+  alerts.yml: |
+    groups:
+      - name: kafka-alerts
+        rules:
+          - alert: KafkaConsumerLagHigh
+            expr: kafka_consumergroup_lag > 1000
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Consumer group {{ $labels.consumergroup }} lagging on {{ $labels.topic }}"
+              description: "Partition {{ $labels.partition }} of topic {{ $labels.topic }} has had a lag of {{ $value }} messages for consumer group {{ $labels.consumergroup }} for over 5 minutes."
+      - name: service-alerts
+        rules:
+          - alert: ServiceDown
+            expr: up{kubernetes_namespace="ticketing"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "{{ $labels.app }} target down"
+              description: "Prometheus target {{ $labels.instance }} (job {{ $labels.job }}) has been unreachable for over 2 minutes."
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.54.1
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=3d
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+            - name: prometheus-config
+              mountPath: /etc/prometheus/rules/alerts.yml
+              subPath: alerts.yml
+            - name: prometheus-data
+              mountPath: /prometheus
+          readinessProbe:
+            httpGet: { path: /-/ready, port: 9090 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: 9090 }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: prometheus-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090

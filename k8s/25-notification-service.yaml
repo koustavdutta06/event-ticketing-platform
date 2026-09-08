@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: notification-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8084"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       initContainers:
         - name: wait-for-kafka
@@ -40,6 +44,15 @@ spec:
             - name: SMTP_PASSWORD
               valueFrom:
                 secretKeyRef: { name: ticketing-secrets, key: SMTP_PASSWORD }
+            - name: ZIPKIN_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: ZIPKIN_ENDPOINT }
+            - name: LOGSTASH_HOST
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_HOST }
+            - name: LOGSTASH_PORT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_PORT }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8084 }
             timeoutSeconds: 5

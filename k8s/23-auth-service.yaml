@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: auth-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       initContainers:
         - name: wait-for-postgres
@@ -37,6 +41,15 @@ spec:
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef: { name: ticketing-secrets, key: JWT_SECRET }
+            - name: ZIPKIN_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: ZIPKIN_ENDPOINT }
+            - name: LOGSTASH_HOST
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_HOST }
+            - name: LOGSTASH_PORT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_PORT }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8085 }
             timeoutSeconds: 5

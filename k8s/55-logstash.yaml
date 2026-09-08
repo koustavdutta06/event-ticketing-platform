@@ -1,0 +1,101 @@
+# Receives structured JSON logs (traceId/spanId already attached by each service's
+# logback-spring.xml) over TCP from all 6 app pods. No storage backend by design (see
+# k8s/README.md) — logs are enriched and written to stdout, viewable with
+# `kubectl -n ticketing logs deploy/logstash -f`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+data:
+  logstash.conf: |
+    input {
+      tcp {
+        port => 5000
+        codec => json_lines
+      }
+    }
+    filter {
+      mutate {
+        remove_field => ["port", "@version"]
+      }
+    }
+    output {
+      stdout { codec => rubydebug }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+        - name: logstash
+          image: docker.elastic.co/logstash/logstash:8.15.0
+          env:
+            # Logstash's real memory footprint is heap PLUS JRuby runtime, Netty buffers
+            # for the TCP input, and metaspace — Elastic's own docs call for real headroom
+            # above -Xmx, not just enough container memory to fit the heap. 256Mi heap in a
+            # 512Mi container left too little of that headroom and got OOMKilled (exit 137)
+            # under real traffic from all 6 services (see TROUBLESHOOTING.md #17).
+            - name: LS_JAVA_OPTS
+              value: "-Xms384m -Xmx384m"
+            - name: XPACK_MONITORING_ENABLED
+              value: "false"
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: logstash-config
+              mountPath: /usr/share/logstash/pipeline/logstash.conf
+              subPath: logstash.conf
+          # Without a startupProbe, liveness/readiness (below) start checking after their
+          # own initialDelaySeconds regardless of whether the JVM has actually finished
+          # booting — under node CPU contention Logstash's startup can run long enough to
+          # get killed mid-boot, restart, get killed again, repeat (same class of bug as
+          # k8s/TROUBLESHOOTING.md problems #3/#7). This gates liveness/readiness off
+          # until startup genuinely succeeds, with a generous ~150s budget.
+          startupProbe:
+            tcpSocket:
+              port: 5000
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 5000
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket:
+              port: 5000
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 150m
+              memory: 640Mi
+            limits:
+              cpu: 500m
+              memory: 896Mi
+      volumes:
+        - name: logstash-config
+          configMap:
+            name: logstash-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+spec:
+  selector:
+    app: logstash
+  ports:
+    - port: 5000
+      targetPort: 5000

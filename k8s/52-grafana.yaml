@@ -1,0 +1,344 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus-ds
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+      - name: Zipkin
+        type: zipkin
+        uid: zipkin-ds
+        access: proxy
+        url: http://zipkin:9411
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+data:
+  service-overview.json: |
+    {
+      "title": "Service Overview",
+      "uid": "svc-overview",
+      "schemaVersion": 39,
+      "version": 1,
+      "editable": true,
+      "refresh": "10s",
+      "time": { "from": "now-30m", "to": "now" },
+      "templating": {
+        "list": [
+          {
+            "name": "application",
+            "label": "Service",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+            "query": { "query": "label_values(http_server_requests_seconds_count, application)", "refId": "StandardVariableQuery" },
+            "refresh": 2,
+            "multi": true,
+            "includeAll": true,
+            "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "HTTP Request Rate",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (application) (rate(http_server_requests_seconds_count{application=~\"$application\"}[1m]))",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "HTTP p95 Latency",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum by (le, application) (rate(http_server_requests_seconds_bucket{application=~\"$application\"}[5m])))",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "5xx Error Rate",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (application) (rate(http_server_requests_seconds_count{application=~\"$application\", status=~\"5..\"}[5m]))",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "JVM Heap Used / Max",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (application) (jvm_memory_used_bytes{application=~\"$application\", area=\"heap\"})",
+              "legendFormat": "{{application}} used",
+              "refId": "A"
+            },
+            {
+              "expr": "sum by (application) (jvm_memory_max_bytes{application=~\"$application\", area=\"heap\"})",
+              "legendFormat": "{{application}} max",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Live Threads",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 16, "w": 8, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (application) (jvm_threads_live_threads{application=~\"$application\"})",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "GC Pause Rate",
+          "type": "timeseries",
+          "gridPos": { "x": 8, "y": 16, "w": 8, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (application) (rate(jvm_gc_pause_seconds_sum{application=~\"$application\"}[5m]))",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Process CPU Usage",
+          "type": "timeseries",
+          "gridPos": { "x": 16, "y": 16, "w": 8, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (application) (process_cpu_usage{application=~\"$application\"})",
+              "legendFormat": "{{application}}",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
+  kafka-consumer-lag.json: |
+    {
+      "title": "Kafka Consumer Lag",
+      "uid": "kafka-lag",
+      "schemaVersion": 39,
+      "version": 1,
+      "editable": true,
+      "refresh": "10s",
+      "time": { "from": "now-30m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Consumer Lag by Group / Topic / Partition",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 9 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "kafka_consumergroup_lag",
+              "legendFormat": "{{consumergroup}} / {{topic}} / partition {{partition}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Total Lag by Consumer Group",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 9, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (consumergroup) (kafka_consumergroup_lag)",
+              "legendFormat": "{{consumergroup}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Messages In Rate per Topic",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 9, "w": 12, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (topic) (rate(kafka_topic_partition_current_offset[5m]))",
+              "legendFormat": "{{topic}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Worst Lagging Partitions (current)",
+          "type": "table",
+          "gridPos": { "x": 0, "y": 17, "w": 24, "h": 8 },
+          "datasource": { "type": "prometheus", "uid": "prometheus-ds" },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "topk(10, kafka_consumergroup_lag)",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      # Grafana's image runs as a non-root UID (472) by default; the PVC's hostpath
+      # volume is root-owned until this runs, so make the whole pod's volumes writable
+      # by that UID instead of granting cluster-wide root.
+      securityContext:
+        fsGroup: 472
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.2.0
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: ticketing-secrets, key: GRAFANA_ADMIN_PASSWORD }
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+      volumes:
+        - name: grafana-data
+          persistentVolumeClaim:
+            claimName: grafana-data
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000

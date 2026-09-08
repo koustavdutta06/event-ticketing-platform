@@ -1,0 +1,54 @@
+# Exposes Kafka consumer-group lag (kafka_consumergroup_lag) as Prometheus metrics —
+# this is the actual source the Kafka Consumer Lag Grafana dashboard and the
+# KafkaConsumerLagHigh alert (51-prometheus.yaml) read from.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-exporter
+  template:
+    metadata:
+      labels:
+        app: kafka-exporter
+    spec:
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z kafka-0.kafka.ticketing.svc.cluster.local 9092; do echo waiting for kafka; sleep 3; done"]
+      containers:
+        - name: kafka-exporter
+          image: danielqsj/kafka-exporter:v1.7.0
+          args:
+            - --kafka.server=kafka-0.kafka.ticketing.svc.cluster.local:9092
+          ports:
+            - containerPort: 9308
+          readinessProbe:
+            httpGet: { path: /metrics, port: 9308 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /metrics, port: 9308 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 150m
+              memory: 96Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-exporter
+spec:
+  selector:
+    app: kafka-exporter
+  ports:
+    - port: 9308
+      targetPort: 9308

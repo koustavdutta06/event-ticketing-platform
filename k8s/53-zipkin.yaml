@@ -1,0 +1,57 @@
+# In-memory Zipkin — no persistence, matches the decision to keep this observability
+# pass storage-free (see 55-logstash.yaml). Traces don't survive a pod restart, which is
+# fine for local/dev use.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipkin
+  template:
+    metadata:
+      labels:
+        app: zipkin
+    spec:
+      containers:
+        - name: zipkin
+          image: openzipkin/zipkin:3.4
+          env:
+            - name: STORAGE_TYPE
+              value: mem
+            - name: JAVA_OPTS
+              value: "-Xms128m -Xmx256m"
+          ports:
+            - containerPort: 9411
+          readinessProbe:
+            httpGet: { path: /health, port: 9411 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 9411 }
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin
+spec:
+  selector:
+    app: zipkin
+  ports:
+    - port: 9411
+      targetPort: 9411

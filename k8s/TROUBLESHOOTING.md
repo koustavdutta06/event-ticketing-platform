@@ -178,6 +178,329 @@ boundary, and Spring's `consumes = "multipart/form-data"` rejects it.
 has to be done once per machine/Postman install after importing the
 collection; it can't be fixed from the collection JSON itself.
 
+## Observability stack (Prometheus, Grafana, Zipkin, Logstash, Kafka lag) — build log & troubleshooting
+
+Added later, on top of the already-working platform above: `50-observability-
+configmap.yaml`, `51-prometheus.yaml`, `52-grafana.yaml`, `53-zipkin.yaml`,
+`54-observability-ingress.yaml`, plus two more not in the original ask but
+required for the stack to actually function — `55-logstash.yaml` (the log
+pipeline itself) and `56-kafka-exporter.yaml` (the actual source of Kafka
+consumer-lag metrics). App-side: each service gained `micrometer-registry-
+prometheus`, `spring-boot-starter-zipkin`, `logstash-logback-encoder`, a
+per-service `logback-spring.xml`, and `management.tracing`/`management.zipkin`
+config. Logstash has **no storage backend by design** — it enriches incoming
+JSON logs and writes to stdout only, no Elasticsearch/Kibana, to stay light on
+the Minikube VM.
+
+This platform runs **Spring Boot 4.0.7**, a major version released after most
+of the internet's Spring Boot 3.x tracing/metrics tutorials and Stack Overflow
+answers were written. Every problem below has the same underlying shape: Boot
+4 split what used to be one auto-configured module in Boot 3.x into several
+much smaller, independently-added modules, and the classic Boot 3.x recipes
+silently do less than they used to instead of failing to compile.
+
+### 9. `Tracer` bean not found — `micrometer-tracing-bridge-brave` alone isn't enough anymore
+**Symptom**: every service with the new `TraceIdHeaderFilter` failed to start:
+`Parameter 0 of constructor ... required a bean of type
+'io.micrometer.tracing.Tracer' that could not be found.`
+**Root cause**: in Boot 3.x, adding `micrometer-tracing-bridge-brave` +
+`zipkin-reporter-brave` as plain dependencies was the whole recipe — Boot's
+own actuator-autoconfigure module wired the `Tracer` bean from there. In Boot
+4.0.7, `spring-boot-actuator-autoconfigure` has **no `tracing` package at
+all** anymore (confirmed by extracting the jar — metrics and tracing
+autoconfiguration moved out into their own dedicated modules,
+`spring-boot-micrometer-metrics` and `spring-boot-micrometer-tracing-brave`).
+Metrics still worked because `spring-boot-starter-actuator` transitively pulls
+in `spring-boot-starter-micrometer-metrics` automatically; nothing pulls in
+the tracing equivalent automatically.
+**Fix**: replaced the manual `micrometer-tracing-bridge-brave` +
+`zipkin-reporter-brave` dependency pair with the single
+`org.springframework.boot:spring-boot-starter-zipkin` starter in all 6
+service POMs — this is Boot 4's bundle that pulls in
+`spring-boot-micrometer-tracing-brave` (the actual autoconfiguration glue)
+alongside the same Micrometer/Zipkin libraries.
+
+### 10. `WebClient.Builder` bean not found in booking-service
+**Symptom**: after fixing #9 and separately fixing `WebClientConfig` to
+inject `WebClient.Builder` instead of calling `WebClient.builder()` directly
+(needed so outbound calls carry trace headers), booking-service failed to
+start: `Parameter 0 of method catalogWebClient ... required a bean of type
+'org.springframework.web.reactive.function.client.WebClient$Builder' that
+could not be found.`
+**Root cause**: same pattern as #9 — `spring-boot-starter-webflux` in Boot 4
+only pulls in `spring-boot-webflux` (the reactive **server** side). The
+`WebClient.Builder` autoconfiguration now lives in a separate
+`spring-boot-webclient` module, activated via its own
+`spring-boot-starter-webclient`. This gap existed from day one but was
+invisible before, because the original code called the static
+`WebClient.builder()` factory method and never asked Spring for the
+autoconfigured builder at all.
+**Fix**: added `org.springframework.boot:spring-boot-starter-webclient` to
+booking-service's POM.
+
+### 11. Prometheus couldn't scrape `auth-service` (403) or `booking-service` (401)
+**Symptom**: Prometheus's `/targets` page showed 6 app targets, but
+`auth-service` was `down` with `403 Forbidden` and `booking-service` was
+`down` with `401 Unauthorized`; the other 4 services scraped fine.
+**Root cause**: both services' Spring Security configs explicitly permitted
+only `/actuator/health` and `/actuator/info`, falling back to
+`.anyRequest().authenticated()` for everything else — including the new
+`/actuator/prometheus` endpoint. (`payment-service` also has Spring Security
+but its fallback is `.anyRequest().permitAll()`, so it was unaffected.)
+**Fix**: added `/actuator/prometheus` alongside `/actuator/health` and
+`/actuator/info` in both `SecurityConfig` classes' permit-list.
+
+### 12. Zipkin spans silently dropped — `ClosedChannelException` on every send
+**Symptom**: `Tracer.currentSpan()` worked fine (the `X-Trace-Id` response
+header was populated correctly), but *nothing* ever showed up in Zipkin —
+`GET /api/v2/traces` always returned `[]`, even though a manual `curl POST` of
+a span straight to Zipkin's `/api/v2/spans` worked and was queryable
+immediately. A one-time `WARN` at each pod's startup
+(`z.r.i.AsyncReporter$BoundedAsyncReporter : Dropped N spans due to
+ConnectException()`) turned out to repeat on every single flush — invisible
+after the first occurrence because the reporter logs subsequent identical
+failures at `FINE` level only. Turning that logger up to `DEBUG` (via
+`kubectl set env`, no rebuild needed) confirmed it: every attempt failed with
+`java.nio.channels.ClosedChannelException` at `SocketChannelImpl.beginConnect`
+— the socket was closed *before* `connect()` was even called.
+**Root cause**: Boot 4.0.7's `spring-boot-zipkin` module
+(`ZipkinAutoConfiguration$ZipkinHttpClientConfiguration`) replaced the
+classic `URLConnectionSender` with a new sender built on Java's
+`java.net.http.HttpClient`. That JDK HttpClient-based sender reproducibly hits
+`ClosedChannelException` against Zipkin's Armeria server in this environment,
+even though the exact same endpoint is reachable via `wget`/`curl` from
+inside the same pod and via a manual span POST from outside the cluster. This
+looks like a genuine bug/incompatibility in Boot 4.0.7's new sender, not a
+network or config problem.
+**Fix**: defined a `zipkin2.reporter.Sender` bean per service using the
+classic `zipkin2.reporter.urlconnection.URLConnectionSender` (added
+`io.zipkin.reporter2:zipkin-sender-urlconnection` as a dependency). Boot's
+`httpClientSender` bean is guarded by
+`@ConditionalOnMissingBean(BytesMessageSender.class)` — confirmed by
+decompiling the class file's annotations — and `URLConnectionSender`'s type
+hierarchy (`SenderAdapter extends Sender implements BytesMessageSender`)
+satisfies that check, so defining this bean makes Boot back off from its own
+broken sender entirely.
+
+### 13. `traceId`/`spanId` never appeared in logs (console pattern or JSON)
+**Symptom**: even after tracing worked end-to-end (spans reaching Zipkin), no
+log line — console or the JSON shipped to Logstash — ever carried a
+`traceId`/`spanId`. The console pattern showed an empty correlation slot:
+`INFO 1 --- [auth-service] [ main] [                    ] c.t.a.AuthServiceApplication : ...`
+(that bracketed blank is where `[traceId,spanId]` belongs).
+**Root cause**: in Boot 3.x, `BraveAutoConfiguration` wired an
+`MDCScopeDecorator` into the `CurrentTraceContext` automatically. Decompiling
+Boot 4.0.7's `spring-boot-micrometer-tracing-brave` module showed its
+`braveCurrentTraceContext` bean method accepts a
+`List<CurrentTraceContext.ScopeDecorator>` — i.e. it's an extension point —
+but nothing in that module actually **supplies** an `MDCScopeDecorator` bean
+into that list anymore. The class needed to build one
+(`brave.context.slf4j.MDCScopeDecorator`) was present on the classpath the
+whole time (`brave-context-slf4j`, pulled in transitively at `runtime` scope
+by `micrometer-tracing-bridge-brave`) — it just wasn't being registered as a
+bean by anything.
+**Fix**: added `io.zipkin.brave:brave-context-slf4j` at `compile` scope
+(needed to reference the class directly) and a one-line
+`@Bean CurrentTraceContext.ScopeDecorator mdcScopeDecorator() { return
+MDCScopeDecorator.get(); }` to each service. Verified by hitting an endpoint
+with a real `log.info(...)` call and confirming both the console bracket and
+the `traceId` field in the Logstash JSON populated with the exact same trace
+ID shown in Zipkin.
+
+### Operational gotchas hit while deploying this (not code bugs)
+- **Fresh cluster, secrets before namespace exists**: `kubectl apply -f
+  k8s/02-secrets.local.yaml` on a brand-new cluster fails with `namespaces
+  "ticketing" not found` — the namespace only gets created as part of
+  `kubectl apply -k k8s/`. On a first-ever setup, apply
+  `k8s/00-namespace.yaml` by itself first.
+- **Building an image without pointing at Minikube's Docker daemon**: running
+  `docker build` directly (instead of through `k8s/build-images.ps1`, which
+  runs `minikube docker-env | Invoke-Expression` first) builds the image into
+  the **host's** Docker Desktop daemon. The pod then can't find it under
+  `imagePullPolicy: IfNotPresent` inside Minikube. Always rebuild through the
+  script, not a bare `docker build`.
+- **A single init container stuck `running` indefinitely despite its own log
+  showing success**: one `booking-service` pod's `wait-for-postgres` init
+  container printed `booking-postgres:5432 - accepting connections` (a
+  successful `pg_isready`) and then never exited for 9+ minutes — every other
+  pod's identical init-container logic worked normally. Never
+  root-caused (no config difference from the working services); resolved by
+  `kubectl delete pod` and letting the Deployment recreate it, which worked
+  first try. Treat as a one-off kubelet/containerd fluke, not a manifest bug
+  — but worth knowing the fix if it happens again.
+
+### 14. HPA scaled up on JVM startup CPU bursts, extra replicas failed to schedule/start
+**Symptom**: on a fresh `kubectl apply -k k8s/`, several `catalog-service`/
+`booking-service`/`payment-service` pods showed `Error` and disappeared
+within a few minutes of each other, replaced by differently-named pods —
+looked alarming in `kubectl get pods -w`, but the single pod that mattered
+for each service was `1/1 Running` with 0 restarts throughout.
+**Root cause**: `kubectl get events` told the real story:
+`SuccessfulRescale ... New size: 3` on those three HPAs, followed by
+`FailedScheduling: 0/1 nodes are available: 1 Insufficient cpu` for some of
+the new replicas, `Unhealthy: Startup probe failed: connection refused` for
+the ones that did get scheduled, then `ScalingReplicaSet from 3 to 1` a few
+minutes later. Spring Boot + Hibernate + Flyway briefly saturate their CPU
+*limit* during startup (see Problem #3) — `metrics-server` reads that as
+70%+ sustained utilization, and the default `HorizontalPodAutoscaler` has
+**no scale-up stabilization window** (`stabilizationWindowSeconds: 0`), so it
+reacts to that one-time burst instantly. The extra replicas then had to
+compete for CPU with the observability stack's added ~750m request/1Gi
+memory footprint on the same 4-CPU node, so some never got scheduled at all
+and others were too CPU-starved to pass their startup probe before the HPA
+scaled back down and deleted them anyway.
+**Fix**: added `behavior.scaleUp.stabilizationWindowSeconds: 120` to all six
+HPAs in `30-hpa.yaml` — requires CPU to stay elevated for 2 minutes before
+scaling up, which a one-time startup burst never does, while still reacting
+normally to real sustained load. **Deployment gotcha hit while applying
+this**: `kubectl apply -f k8s/30-hpa.yaml` (bypassing kustomize) creates the
+HPAs in whatever namespace your current context defaults to — `30-hpa.yaml`
+has no `namespace:` field of its own; that only gets injected by
+`kustomization.yaml`'s top-level `namespace: ticketing` when applied via
+`kubectl apply -k k8s/`. Applying the bare file created a second, broken set
+of HPAs in the `default` namespace (targeting Deployments that don't exist
+there, so `TARGETS: <unknown>`) without touching the real ones. Always use
+`kubectl apply -k k8s/` (or `-n ticketing` explicitly) for anything in this
+directory, never a bare `-f`.
+
+### Final verified state (observability stack)
+Prometheus `/targets`: all 9 up (6 app services + `kafka-exporter` + `zipkin`
++ self). A real request through `auth-service`/`catalog-service` produces a
+matching `X-Trace-Id` response header, a full span tree in Zipkin, and a
+`traceId`-tagged JSON log line on the `logstash` pod's stdout. Both Grafana
+dashboards ("Service Overview", "Kafka Consumer Lag") provisioned and
+rendering against both datasources (Prometheus, Zipkin). `kafka_consumergroup
+_lag` populated for both real consumer groups (`booking-service`,
+`notification-service`) across all topics, currently at 0. Both alerting
+rules (`KafkaConsumerLagHigh`, `ServiceDown`) loaded and `inactive`.
+
+### 15. Zipkin's trace list dominated by actuator/Prometheus/Security noise, not real requests
+**Symptom**: Zipkin's "Find a trace" list was almost entirely `catalog-service: http
+get /actuator/health`, `payment-service: http get /actuator/prometheus`, etc. — one
+new entry every few seconds from Kubernetes' own liveness/readiness probes (every
+5-20s per service) and Prometheus's scrape (every 15s per service), burying real
+user-triggered traces.
+**Root cause / fix, in three layers** (each layer's fix exposed the next):
+1. **The HTTP request itself.** `management.tracing.sampling.probability: 1.0` traces
+   *everything*, including infrastructure calls with no business meaning. Fixed with an
+   `ObservationPredicate` bean per service that returns `false` for any
+   `ServerRequestObservationContext` (MVC: `org.springframework.http.server.observation`;
+   WebFlux: `org.springframework.http.server.reactive.observation` — different package
+   per style, see Problem #9-13's pattern of MVC/WebFlux needing separate handling)
+   whose request path starts with `/actuator`. Suppressing an `Observation` this way
+   stops it from creating a span *and* a metric — same fix also cleaned up the
+   `http_server_requests_seconds` noise in the Grafana "Service Overview" dashboard.
+2. **Spring Security's own instrumentation.** With #1 in place, `auth-service`,
+   `booking-service`, and `payment-service` (the three with Spring Security) still
+   produced orphaned traces named `secured request`, `authorize request`/
+   `authorize exchange`, `security filterchain before`/`after` for every `/actuator/*`
+   call — Spring Security auto-instruments its own filter chain/authorization/
+   authentication the moment it detects an `ObservationRegistry` bean, independent of
+   Boot's own HTTP observation. Worse, its filter-chain context
+   (`ObservationFilterChainDecorator$FilterChainObservationContext` /
+   `ObservationWebFilterChainDecorator$WebFilterChainObservationContext`) is
+   **package-private and carries no request information at all** — there's no path to
+   filter on, so the `ObservationPredicate` approach from #1 is structurally
+   impossible to apply here. Fixed with the actual supported mechanism: a
+   `SecurityObservationSettings.noObservations()` bean in each of the three
+   `SecurityConfig` classes, which disables Security's self-instrumentation entirely.
+3. **Downstream Redis noise, once its parent was gone.** `catalog-service` and
+   `payment-service` (the two with Redis) then showed orphaned `info`, `client`, and
+   `hello` traces — the actuator Redis health indicator issues those raw commands on
+   every health check, and once its parent HTTP observation was suppressed by #1, they
+   had nowhere to nest and surfaced as their own root traces. Rather than an
+   ever-growing allowlist of command names, fixed generally: an `ObservationPredicate`
+   on `io.lettuce.core.tracing.LettuceObservationContext` that suppresses the command
+   *unless* `ObservationRegistry.getCurrentObservation()` is non-null and not itself a
+   no-op — i.e., unless it's running inside a real traced request. Real business Redis
+   calls always run inside an active HTTP request's observation scope; health-check
+   commands never do, so this cleanly separates the two without naming individual
+   commands. **Gotcha hit while implementing this**: injecting `ObservationRegistry`
+   directly into this bean's factory method creates a circular dependency — Boot's
+   `ObservationAutoConfiguration` builds the registry *from* all `ObservationPredicate`
+   beans, so a predicate bean that itself depends on the registry is asking for
+   something not built yet (`BeanCurrentlyInCreation`). Fixed by injecting
+   `ObjectProvider<ObservationRegistry>` instead, which defers the actual lookup from
+   bean-construction time to predicate-evaluation time (long after the registry exists).
+**Result**: Zipkin's trace list now shows only real traffic — actual HTTP requests and
+`inventory-service`'s legitimate recurring `seatExpiryScheduler.releaseExpiredHolds`
+job — nothing else.
+
+### 16. Docker Desktop/minikube interruption — Kafka topics gone, Logstash crash-looping
+**Symptom** (noticed ~45h into this cluster's life, after a period of the host machine
+being asleep/restarted): `kubectl -n ticketing get pods` showed low restart counts
+(1-2) on *nearly every* pod simultaneously — a signature of the whole node having
+restarted, not an application bug. Two real problems fell out of that:
+1. `booking-service`'s Kafka consumer logged a stream of `WARN ... NetworkClient :
+   The metadata response from the cluster reported a recoverable issue ...
+   {payment-events=UNKNOWN_TOPIC_OR_PARTITION}` (and `seat-events` too).
+   `kafka-topics.sh --list` against `kafka-0` confirmed it: only `__consumer_offsets`
+   existed — all four application topics were gone.
+2. `logstash` showed `23 restarts`, most recent `3s ago` — an active crash loop, not a
+   one-time blip.
+**Root cause**:
+1. Kafka's KRaft log data didn't survive the node restart (whether that's the
+   hostpath PVC itself or just Kafka's own metadata reinitializing on that path wasn't
+   dug into further — not worth it for a single-node dev broker). `16-kafka-topics-
+   -job.yaml` is a Kubernetes `Job`, which runs to completion exactly once and never
+   re-triggers on its own — so once the topics it created were gone, nothing was going
+   to recreate them without manual intervention.
+2. `55-logstash.yaml`'s `readinessProbe`/`livenessProbe` had no accompanying
+   `startupProbe` — exactly the same class of bug as Problems #3 and #7: on a
+   contended node, Logstash's actual JVM+pipeline startup took **~2 minutes**
+   (confirmed by timing the fix's rollout), well past the liveness probe's
+   `initialDelaySeconds: 60`. Once that first liveness check fires against a JVM
+   that's still booting, kubelet kills it, it restarts, and repeats — a self-sustaining
+   loop that doesn't need the node to still be under load to persist, since Logstash's
+   *own* startup time already exceeds the probe budget. `kubectl describe pod` showed
+   `Unhealthy: Liveness probe failed ... x48 over 45h` — this had been happening
+   intermittently for the pod's entire life, not just from this one incident.
+**Fix**:
+1. `kubectl delete job kafka-topics-init` (Jobs can't be re-triggered in place) then
+   re-`apply` the same manifest — the script is already idempotent
+   (`--create --if-not-exists`), so this is always safe to rerun.
+2. Added a `startupProbe` (`tcpSocket` on 5000, `failureThreshold: 30` ×
+   `periodSeconds: 5` = 150s budget) to `55-logstash.yaml`, matching the pattern
+   already used on all six app services — gates liveness/readiness off until startup
+   genuinely finishes instead of racing it.
+**Takeaway for next time**: after any host sleep/restart that takes Minikube down
+uncleanly, check `kubectl -n ticketing get pods` for a cluster-wide low-restart-count
+pattern as the tell, then specifically verify Kafka's topics are still there
+(`kafka-topics.sh --list`) before assuming the stack is healthy just because pods show
+`Running`.
+
+### 17. Logstash OOMKilled under real traffic, even after the startupProbe fix (#16)
+**Symptom**: after fixing the startup-probe crash loop in #16, `logstash` ran stable
+for ~31 minutes, then restarted again — this time all 6 app services logged the same
+`LogstashTcpSocketAppender ... connection failed. java.net.ConnectException:
+Connection refused` burst simultaneously (their `neverBlock: true` async appender
+means this never blocks the app itself — see the appender config in each
+`logback-spring.xml` — but it does mean the logs sent during Logstash's downtime are
+silently dropped, not queued).
+**Root cause**: `kubectl get pod -o jsonpath='{...lastState}'` told the real story
+immediately: `"reason":"OOMKilled","exitCode":137`. `LS_JAVA_OPTS` capped the JVM
+heap at `-Xmx256m` inside a container `memory` limit of only `512Mi` — Logstash's
+*actual* memory footprint is heap plus JRuby runtime, Netty buffers for the TCP
+input, and metaspace, and Elastic's own sizing guidance calls for real headroom above
+`-Xmx`, not just enough container memory to fit the heap. 512Mi was too tight to
+begin with (confirmed after the fix: idle usage alone sits around 564Mi, already
+past the *old* limit), and once real log volume from all 6 services arrived, the
+container blew past it and the cgroup OOM-killed the process outright — invisible in
+Logstash's own JVM logs since a `SIGKILL` from the outside gives the process no
+chance to log anything on the way down.
+**Fix**: raised `-Xmx`/`-Xms` to `384m` and the container's `memory` limit to `896Mi`
+(request `640Mi`) in `55-logstash.yaml`. Confirmed via `kubectl top pod` after the
+fix: ~564Mi at idle against the new 896Mi limit, comfortable headroom instead of
+already-exhausted.
+**Takeaway**: #16 and #17 look identical from the app-service side (the same
+`LogstashTcpSocketAppender ... Connection refused` burst in every service's logs) but
+have different root causes and fixes — a probe-timing bug (dead on arrival every
+time, pattern of failures from the moment the pod starts) versus an OOM under load
+(runs fine for a while, then dies once traffic accumulates). `kubectl get pod
+-o jsonpath='{.status.containerStatuses[0].lastState}'` distinguishes them
+immediately — `"reason":"OOMKilled"` versus no `lastState.terminated` reason tied to
+a probe failure — so check that first rather than assuming it's a repeat of #16.
+
 ## Known issue found, not yet fixed
 
 `BookingService.initiateBooking` reads the customer's email out of the JWT

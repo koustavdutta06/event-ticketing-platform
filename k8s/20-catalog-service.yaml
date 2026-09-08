@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: catalog-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       initContainers:
         - name: wait-for-postgres
@@ -49,6 +53,15 @@ spec:
             - name: REDIS_PORT
               valueFrom:
                 configMapKeyRef: { name: ticketing-config, key: REDIS_PORT }
+            - name: ZIPKIN_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: ZIPKIN_ENDPOINT }
+            - name: LOGSTASH_HOST
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_HOST }
+            - name: LOGSTASH_PORT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_PORT }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8081 }
             timeoutSeconds: 5

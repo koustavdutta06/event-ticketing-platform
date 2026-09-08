@@ -1,0 +1,10 @@
+# Shared observability env values consumed by the 6 app Deployments (20-25) and by the
+# observability stack itself (Prometheus/Grafana/Zipkin/Logstash — 51-56).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observability-config
+data:
+  ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+  LOGSTASH_HOST: logstash
+  LOGSTASH_PORT: "5000"

@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: inventory-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       initContainers:
         - name: wait-for-postgres
@@ -40,6 +44,15 @@ spec:
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef: { name: ticketing-config, key: KAFKA_BOOTSTRAP_SERVERS }
+            - name: ZIPKIN_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: ZIPKIN_ENDPOINT }
+            - name: LOGSTASH_HOST
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_HOST }
+            - name: LOGSTASH_PORT
+              valueFrom:
+                configMapKeyRef: { name: observability-config, key: LOGSTASH_PORT }
           startupProbe:
             httpGet: { path: /actuator/health, port: 8082 }
             timeoutSeconds: 5

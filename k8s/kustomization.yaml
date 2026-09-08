@@ -26,3 +26,10 @@ resources:
   - 25-notification-service.yaml
   - 30-hpa.yaml
   - 40-ingress.yaml
+  - 50-observability-configmap.yaml
+  - 51-prometheus.yaml
+  - 52-grafana.yaml
+  - 53-zipkin.yaml
+  - 54-observability-ingress.yaml
+  - 55-logstash.yaml
+  - 56-kafka-exporter.yaml

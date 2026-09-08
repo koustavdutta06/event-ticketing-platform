@@ -15,6 +15,17 @@ password gotcha, etc.), see [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md).
 - `minikube addons enable ingress`
 - `minikube addons enable metrics-server`
 
+> **Observability stack note:** Prometheus + Grafana + Zipkin + Logstash + Kafka Exporter
+> (`k8s/50`-`56-*.yaml`) add roughly another 750m CPU / 1Gi memory of *requests* on top of
+> everything above. The VM size documented here was sized before that stack existed, so if
+> pods stay `Pending`, recreate Minikube larger, e.g.:
+> ```powershell
+> minikube delete
+> minikube start --driver=docker --memory=10240 --cpus=4
+> minikube addons enable ingress
+> minikube addons enable metrics-server
+> ```
+
 ## 1. Build the app images into Minikube's Docker daemon
 
 Minikube runs its own Docker daemon, separate from your host's. Point your
@@ -98,7 +109,13 @@ minikube ip
 <minikube-ip>  auth.ticketing.local
 <minikube-ip>  payment.ticketing.local
 <minikube-ip>  notification.ticketing.local
+<minikube-ip>  grafana.ticketing.local
+<minikube-ip>  prometheus.ticketing.local
+<minikube-ip>  zipkin.ticketing.local
 ```
+
+Logstash and Kafka Exporter aren't browsable UIs (they're fed by / scraped by the other
+pods), so they're internal `ClusterIP` services only — no hostname needed.
 
 With the Docker driver on Windows, Minikube's IP usually isn't directly
 routable from the host — if the hostnames above don't respond, run
@@ -110,6 +127,9 @@ Then e.g.:
 ```
 http://catalog.ticketing.local/swagger-ui.html
 http://auth.ticketing.local/swagger-ui.html
+http://grafana.ticketing.local        # log in as admin / <GRAFANA_ADMIN_PASSWORD from k8s/02-secrets.local.yaml>
+http://prometheus.ticketing.local
+http://zipkin.ticketing.local
 ```
 
 ## Quick alternative: port-forward instead of Ingress
